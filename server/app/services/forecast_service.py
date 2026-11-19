@@ -10,7 +10,7 @@ import pandas as pd
 from app.extensions import db
 from app.models import Forecast, MenuItem, Sale, SaleItem
 from app.ml.calendar_utils import get_calendar_features, get_upcoming_indian_events
-from app.ml.preprocessor import FEATURE_COLUMNS, build_feature_dataset
+from app.ml.preprocessor import FEATURE_COLUMNS, build_feature_dataset, extract_inference_features
 from app.ml.models import (
     train_and_evaluate_models,
     load_trained_model_bundle,
@@ -51,6 +51,11 @@ def generate_forecasts(
     baseline_model = bundle["baseline"]
     meta = bundle.get("metadata", {})
     rmse = meta.get("evaluation", {}).get("randomForest", {}).get("rmse", 3.0)
+    dish_rmse_map = {
+        d["menuItemId"]: float(d.get("rmse") or rmse)
+        for d in meta.get("dishBreakdown", [])
+        if "menuItemId" in d
+    }
 
     # Determine start date
     if start_date is None:
@@ -101,48 +106,18 @@ def generate_forecasts(
             target_d = start_date + timedelta(days=step)
             cal = get_calendar_features(target_d)
 
-            # Recursive lag lookups
-            lag_1 = dish_history.get(target_d - timedelta(days=1), avg_dish_qty)
-            lag_2 = dish_history.get(target_d - timedelta(days=2), avg_dish_qty)
-            lag_7 = dish_history.get(target_d - timedelta(days=7), avg_dish_qty)
-
-            # Rolling 7-day mean from preceding 7 days
-            prior_7 = [
-                dish_history.get(target_d - timedelta(days=i), avg_dish_qty)
-                for i in range(1, 8)
-            ]
-            rolling_mean_7 = float(np.mean(prior_7))
-            rolling_std_7 = float(np.std(prior_7))
-
-            # Rolling 14-day mean
-            prior_14 = [
-                dish_history.get(target_d - timedelta(days=i), avg_dish_qty)
-                for i in range(1, 15)
-            ]
-            rolling_mean_14 = float(np.mean(prior_14))
-
-            # Feature dictionary
-            row_features = {
-                "menu_item_id": dish.id,
+            # Standardized zero-skew feature extraction matching training pipeline
+            dish_meta = {
                 "price": float(dish.price or 100.0),
-                "is_veg": 1 if dish.is_veg else 0,
-                "prep_time_minutes": int(dish.prep_time_minutes or 15),
-                "day_of_week": cal["day_of_week"],
-                "is_weekend": cal["is_weekend"],
-                "month": cal["month"],
-                "day_of_month": cal["day_of_month"],
-                "quarter": cal["quarter"],
-                "day_of_year": cal["day_of_year"],
-                "is_public_holiday": cal["is_public_holiday"],
-                "is_indian_festival": cal["is_indian_festival"],
-                "days_to_nearest_festival": cal["days_to_nearest_festival"],
-                "lag_1": lag_1,
-                "lag_2": lag_2,
-                "lag_7": lag_7,
-                "rolling_mean_7": rolling_mean_7,
-                "rolling_std_7": rolling_std_7,
-                "rolling_mean_14": rolling_mean_14,
+                "is_veg": dish.is_veg,
+                "prep_time_minutes": int(dish.prep_time_minutes or 15)
             }
+            row_features = extract_inference_features(
+                dish_id=dish.id,
+                target_d=target_d,
+                dish_history=dish_history,
+                dish_meta=dish_meta
+            )
 
             # Predict using Random Forest
             feat_df = pd.DataFrame([row_features])[FEATURE_COLUMNS]
@@ -153,8 +128,9 @@ def generate_forecasts(
             base_pred = float(baseline_model.predict(feat_df)[0])
             base_pred = max(1.0, round(base_pred, 1))
 
-            # 95% Confidence Interval: +/- 1.96 * RMSE
-            ci_half = 1.96 * rmse
+            # 95% Confidence Interval using dish-adaptive RMSE (or global fallback)
+            dish_specific_rmse = dish_rmse_map.get(dish.id, rmse)
+            ci_half = 1.96 * dish_specific_rmse
             ci_lower = max(0.0, round(pred_qty - ci_half, 1))
             ci_upper = round(pred_qty + ci_half, 1)
 
