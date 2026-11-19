@@ -6,24 +6,24 @@ import { importantAlerts } from "../../data/mockData"
 import { Link, useLocation } from "react-router-dom"
 
 const PAGE_TITLES = {
-  "/": "Dashboard",
+  "/": "Executive Dashboard",
   "/daily-plan": "Daily Action Plan",
-  "/sales": "Sales Management",
-  "/menu": "Menu & Recipes",
-  "/recipes": "Recipe BOM",
-  "/forecast": "Demand Forecast",
-  "/inventory": "Inventory Management",
-  "/purchase-planner": "Purchase Planning",
-  "/waste": "Waste Management",
-  "/ai-recipes": "Leftover Suggestions",
-  "/environmental": "Environmental Impact",
-  "/analytics": "Executive Reports",
-  "/settings": "System Settings"
+  "/sales": "Sales & POS Management",
+  "/menu": "Menu Catalog",
+  "/recipes": "Recipe Management (BOM)",
+  "/forecast": "AI Demand Forecasting",
+  "/inventory": "Inventory & Batch Tracking",
+  "/purchase-planner": "Procurement & Purchase Orders",
+  "/waste": "Waste Management & Prevention",
+  "/ai-recipes": "Leftover AI Upcycling",
+  "/environmental": "Environmental Impact Tracker",
+  "/analytics": "Executive Reports & Analytics",
+  "/settings": "System & Kitchen Settings"
 }
 
 export const Navbar = ({ onToggleSidebar }) => {
-  const { user, logout, switchRole } = useAuth()
-  const { theme, setTheme, toggleTheme, isDark } = useTheme()
+  const { user, logout } = useAuth()
+  const { theme, setTheme, isDark } = useTheme()
   const location = useLocation()
   const [showAlertsDropdown, setShowAlertsDropdown] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
@@ -76,7 +76,7 @@ export const Navbar = ({ onToggleSidebar }) => {
             className={`px-2 py-1 rounded-md flex items-center space-x-1.5 transition cursor-pointer ${
               !isDark
                 ? "bg-white text-stone-900 font-semibold shadow-xs border border-stone-200/80"
-                : "text-stone-400 hover:text-stone-200"
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
             title="Switch to Light Theme"
             aria-label="Light Theme"
@@ -90,7 +90,7 @@ export const Navbar = ({ onToggleSidebar }) => {
             className={`px-2 py-1 rounded-md flex items-center space-x-1.5 transition cursor-pointer ${
               isDark
                 ? "bg-stone-700 text-stone-100 font-semibold shadow-xs border border-stone-600/80"
-                : "text-stone-500 hover:text-stone-800"
+                : "text-stone-500 hover:text-stone-800 dark:text-stone-400"
             }`}
             title="Switch to Dark Theme"
             aria-label="Dark Theme"
@@ -109,6 +109,7 @@ export const Navbar = ({ onToggleSidebar }) => {
             }}
             className="relative p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition cursor-pointer"
             title="Operational Alerts"
+            aria-label="Operational alerts"
           >
             <Bell className="w-4 h-4" />
             {importantAlerts.length > 0 && (
@@ -133,15 +134,15 @@ export const Navbar = ({ onToggleSidebar }) => {
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-72 overflow-y-auto">
+              <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
                 {importantAlerts.map((alt) => (
                   <div
                     key={alt.id}
                     className={`p-2.5 rounded-md text-xs border ${
                       alt.level === "critical"
-                        ? "bg-rose-50/60 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-950 dark:text-rose-200"
+                        ? "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-950 dark:text-rose-200"
                         : alt.level === "warning"
-                        ? "bg-amber-50/60 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-950 dark:text-amber-200"
+                        ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-950 dark:text-amber-200"
                         : "bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-200"
                     }`}
                   >
@@ -150,7 +151,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                     <Link
                       to={alt.link}
                       onClick={() => setShowAlertsDropdown(false)}
-                      className="inline-flex items-center space-x-1 mt-1.5 text-[11px] font-medium text-forest-700 dark:text-emerald-400 hover:underline"
+                      className="inline-flex items-center space-x-1 mt-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
                       <span>{alt.action}</span>
                       <ChevronRight className="w-3 h-3" />
@@ -171,6 +172,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                 setShowAlertsDropdown(false)
               }}
               className="flex items-center space-x-2 p-1 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              aria-label="User profile menu"
             >
               <div className="w-7 h-7 rounded-md bg-stone-900 dark:bg-stone-100 text-stone-100 dark:text-stone-900 font-semibold text-xs flex items-center justify-center">
                 {user.fullName ? user.fullName[0].toUpperCase() : "V"}
@@ -191,7 +193,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                   </span>
                 </div>
 
-                <div className="py-1">
+                <div className="py-1 space-y-0.5">
                   <Link
                     to="/settings"
                     onClick={() => setShowProfileDropdown(false)}
@@ -204,7 +206,7 @@ export const Navbar = ({ onToggleSidebar }) => {
                       setShowProfileDropdown(false)
                       logout()
                     }}
-                    className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-md text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                    className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-md text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer text-left"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign Out</span>

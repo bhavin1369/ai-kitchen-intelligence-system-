@@ -84,7 +84,7 @@ export const MenuPage = () => {
   }, [successMsg])
 
   // Extract unique categories from backend items
-  const baseCategories = ["all", "Thali", "Mains", "South Indian", "Snacks", "Beverages", "Starters", "Desserts"]
+  const baseCategories = ["all", "Mains", "Starters", "Thali", "South Indian", "Snacks", "Beverages", "Desserts"]
   const dynamicCategories = Array.from(new Set(menuItems.map((m) => m.category).filter(Boolean)))
   const allCategories = Array.from(new Set([...baseCategories, ...dynamicCategories]))
 
@@ -116,20 +116,15 @@ export const MenuPage = () => {
   const handleToggleStatus = async (item) => {
     try {
       const updatedAvailability = !item.isAvailable
-      // Optimistic update
       setMenuItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id
-            ? { ...it, isAvailable: updatedAvailability, status: updatedAvailability ? "active" : "inactive" }
-            : it
-        )
+        prev.map((m) => (m.id === item.id ? { ...m, isAvailable: updatedAvailability } : m))
       )
-
       await menuService.update(item.id, { isAvailable: updatedAvailability })
-      setSuccessMsg(`"${item.name}" is now ${updatedAvailability ? "active in POS" : "inactive (hidden)"}.`)
+      setSuccessMsg(
+        `"${item.name}" is now ${updatedAvailability ? "Available" : "Hidden"} on POS.`
+      )
     } catch (err) {
-      console.error("Failed to toggle status:", err)
-      setError(err.response?.data?.message || "Failed to update availability status.")
+      console.error("Toggle error:", err)
       fetchMenuItems(true)
     }
   }
@@ -153,31 +148,26 @@ export const MenuPage = () => {
     setFormName(item.name)
     setFormCategory(item.category || "Mains")
     setFormPrice(item.price)
-    setFormCost(item.costPrice || 0)
+    setFormCost(item.costPrice || Math.round(item.price * 0.35))
     setFormPrepTime(item.prepTimeMinutes || 15)
-    setFormIsVeg(item.isVeg !== false)
+    setFormIsVeg(item.isVeg)
     setFormDesc(item.description || "")
     setShowAddModal(true)
   }
 
-  // Submit Create or Edit
+  // Submit Add or Edit Item
   const handleSaveItem = async (e) => {
     e.preventDefault()
-    if (!formName.trim()) {
-      setError("Dish name is required.")
-      return
-    }
-
     setSubmitting(true)
     setError(null)
 
     const payload = {
       name: formName.trim(),
-      category: formCategory.trim(),
-      price: Number(formPrice),
-      costPrice: Number(formCost),
-      prepTimeMinutes: Number(formPrepTime),
-      isVeg: Boolean(formIsVeg),
+      category: formCategory,
+      price: parseFloat(formPrice),
+      costPrice: parseFloat(formCost),
+      prepTimeMinutes: parseInt(formPrepTime, 10),
+      isVeg: formIsVeg,
       description: formDesc.trim(),
     }
 
@@ -190,9 +180,9 @@ export const MenuPage = () => {
           fetchMenuItems(true)
         }
       } else {
-        const res = await menuService.create({ ...payload, isAvailable: true })
+        const res = await menuService.create(payload)
         if (res.data?.success) {
-          setSuccessMsg(`"${payload.name}" created and added to canteen menu.`)
+          setSuccessMsg(`"${payload.name}" added to menu catalog!`)
           setShowAddModal(false)
           fetchMenuItems(true)
         }
@@ -237,17 +227,17 @@ export const MenuPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200 dark:border-stone-800">
         <div>
           <div className="flex items-center space-x-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               Menu Management
             </h1>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
               Live Catalog
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5">
             Configure canteen catalog, dish selling prices, prep times, and live POS availability.
           </p>
         </div>
@@ -256,23 +246,23 @@ export const MenuPage = () => {
           <button
             onClick={() => fetchMenuItems(true)}
             disabled={refreshing}
-            className="p-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1 cursor-pointer"
+            className="p-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1 cursor-pointer shadow-xs"
             title="Refresh from Database"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-forest-800" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
           <Link
             to="/recipes"
-            className="px-3.5 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition"
+            className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition shadow-xs"
           >
             Recipe BOMs →
           </Link>
           <button
             onClick={handleOpenCreateModal}
-            className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-300" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Add Menu Item</span>
           </button>
         </div>
@@ -280,60 +270,60 @@ export const MenuPage = () => {
 
       {/* Notifications */}
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{successMsg}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900">
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between animate-in fade-in">
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs flex items-center justify-between animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span className="font-medium">{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-700 hover:text-rose-900">
+          <button onClick={() => setError(null)} className="text-rose-700 dark:text-rose-300 hover:opacity-75 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Total Menu Items</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">{totalItems}</div>
-          <p className="text-[11px] text-stone-500 mt-1">Canteen catalog entries</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Total Menu Items</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-1.5">{totalItems}</div>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Canteen catalog entries</p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Live in POS</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">{activeItems}</div>
-          <p className="text-[11px] text-emerald-700 font-medium mt-1">Ready for order taking</p>
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Live in POS</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-1.5">{activeItems}</div>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">Ready for order taking</p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Avg Gross Margin</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">{avgMargin}%</div>
-          <p className="text-[11px] text-stone-500 mt-1">Calculated from raw ingredient BOM</p>
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Avg Gross Margin</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-1.5">{avgMargin}%</div>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Calculated from recipe BOM</p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Dietary Split</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Dietary Split</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-1.5">
             {vegCount} Veg / {nonVegCount} Non-Veg
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">Canteen dietary balance</p>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Canteen dietary balance</p>
         </div>
       </div>
 
       {/* Search & Category Tabs */}
-      <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
+      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3 shadow-xs">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
@@ -342,22 +332,22 @@ export const MenuPage = () => {
               placeholder="Search dishes or categories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-md bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-400"
+              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Status Filter */}
-            <div className="inline-flex items-center space-x-1 bg-stone-100 p-0.5 rounded-md border border-stone-200/60">
-              <span className="text-stone-500 font-medium px-1.5 text-[11px]">Status:</span>
+            <div className="inline-flex items-center space-x-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-md border border-stone-200 dark:border-stone-700">
+              <span className="text-stone-500 dark:text-stone-400 font-medium px-1.5 text-[11px]">Status:</span>
               {["all", "active", "inactive"].map((st) => (
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
                   className={`px-2 py-0.5 rounded capitalize text-xs font-medium transition cursor-pointer ${
                     statusFilter === st
-                      ? "bg-white text-stone-900 shadow-xs font-semibold"
-                      : "text-stone-600 hover:text-stone-900"
+                      ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold"
+                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
                   }`}
                 >
                   {st}
@@ -366,12 +356,12 @@ export const MenuPage = () => {
             </div>
 
             {/* Diet Filter */}
-            <div className="inline-flex items-center space-x-1 bg-stone-100 p-0.5 rounded-md border border-stone-200/60">
-              <span className="text-stone-500 font-medium px-1.5 text-[11px]">Diet:</span>
+            <div className="inline-flex items-center space-x-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-md border border-stone-200 dark:border-stone-700">
+              <span className="text-stone-500 dark:text-stone-400 font-medium px-1.5 text-[11px]">Diet:</span>
               <button
                 onClick={() => setDietFilter("all")}
                 className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
-                  dietFilter === "all" ? "bg-white text-stone-900 shadow-xs font-semibold" : "text-stone-600 hover:text-stone-900"
+                  dietFilter === "all" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
                 }`}
               >
                 All
@@ -379,7 +369,7 @@ export const MenuPage = () => {
               <button
                 onClick={() => setDietFilter("veg")}
                 className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
-                  dietFilter === "veg" ? "bg-white text-stone-900 shadow-xs font-semibold" : "text-stone-600 hover:text-stone-900"
+                  dietFilter === "veg" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
                 }`}
               >
                 Veg
@@ -387,7 +377,7 @@ export const MenuPage = () => {
               <button
                 onClick={() => setDietFilter("nonveg")}
                 className={`px-2 py-0.5 rounded text-xs font-medium transition cursor-pointer ${
-                  dietFilter === "nonveg" ? "bg-white text-stone-900 shadow-xs font-semibold" : "text-stone-600 hover:text-stone-900"
+                  dietFilter === "nonveg" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
                 }`}
               >
                 Non-Veg
@@ -397,15 +387,15 @@ export const MenuPage = () => {
         </div>
 
         {/* Category Pill Tabs */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
           {allCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-2.5 py-1 rounded-md capitalize whitespace-nowrap text-xs font-medium transition cursor-pointer ${
                 selectedCategory === cat
-                  ? "bg-stone-900 text-white font-semibold"
-                  : "bg-stone-50 text-stone-600 hover:bg-stone-100 border border-stone-200"
+                  ? "bg-emerald-700 dark:bg-emerald-600 text-white font-semibold"
+                  : "bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700"
               }`}
             >
               {cat === "all" ? "All Categories" : cat}
@@ -418,36 +408,38 @@ export const MenuPage = () => {
       {loading ? (
         <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-6 h-6 text-stone-400 animate-spin" />
-          <p className="text-xs text-stone-500">Loading dishes from database...</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Loading dishes from database...</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="py-16 text-center bg-white rounded-lg border border-stone-200 p-8">
-          <UtensilsCrossed className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-          <h3 className="text-sm font-semibold text-stone-900">No menu items found</h3>
-          <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+        <div className="py-16 text-center bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 p-8 shadow-xs">
+          <UtensilsCrossed className="w-8 h-8 text-stone-300 dark:text-stone-600 mx-auto mb-2" />
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">No menu items found</h3>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-sm mx-auto">
             Try adjusting your search query, diet filter, or category selector, or add a new menu dish.
           </p>
           <button
             onClick={handleOpenCreateModal}
-            className="mt-3 px-3.5 py-2 rounded-lg bg-forest-900 text-white text-xs font-medium cursor-pointer"
+            className="mt-3 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium cursor-pointer"
           >
             Create First Dish
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className={`p-4 rounded-lg bg-white border transition flex flex-col justify-between ${
-                item.isAvailable ? "border-stone-200 hover:border-stone-300" : "border-stone-200 opacity-60 bg-stone-50"
+              className={`p-4 rounded-lg bg-white dark:bg-stone-900 border transition flex flex-col justify-between shadow-xs ${
+                item.isAvailable
+                  ? "border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700"
+                  : "border-stone-200 dark:border-stone-800 opacity-60 bg-stone-50/60 dark:bg-stone-850"
               }`}
             >
               <div>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2">
                     <span
-                      className={`w-3.5 h-3.5 rounded-sm flex items-center justify-center border ${
+                      className={`w-3.5 h-3.5 rounded-xs flex items-center justify-center border ${
                         item.isVeg ? "border-green-600" : "border-red-600"
                       }`}
                       title={item.isVeg ? "Vegetarian" : "Non-Vegetarian"}
@@ -458,7 +450,7 @@ export const MenuPage = () => {
                         }`}
                       />
                     </span>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-stone-500">
                       {item.category}
                     </span>
                   </div>
@@ -471,11 +463,11 @@ export const MenuPage = () => {
                       className="cursor-pointer"
                     >
                       {item.isAvailable ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-forest-100 text-forest-800 border border-forest-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-200 text-stone-600">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-200 dark:bg-stone-750 text-stone-600 dark:text-stone-400">
                           Inactive
                         </span>
                       )}
@@ -485,7 +477,7 @@ export const MenuPage = () => {
                     <button
                       onClick={() => handleOpenEditModal(item)}
                       title="Edit Dish"
-                      className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-warm-100 transition"
+                      className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -494,43 +486,43 @@ export const MenuPage = () => {
                     <button
                       onClick={() => setItemToDelete(item)}
                       title="Delete Dish"
-                      className="p-1 rounded text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                      className="p-1 rounded text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                <h3 className="font-bold text-base text-stone-900 mt-2">{item.name}</h3>
-                <p className="text-xs text-stone-500 mt-1 line-clamp-2">
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 mt-2">{item.name}</h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
                   {item.description || "Authentic freshly prepared kitchen recipe."}
                 </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-warm-100">
+              <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800">
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-2 rounded-lg bg-warm-50 border border-warm-100">
-                    <div className="text-[10px] text-stone-400 uppercase font-semibold">Selling Price</div>
-                    <div className="font-bold text-stone-900 mt-0.5">₹{item.price}</div>
+                  <div className="p-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <div className="text-[10px] text-stone-400 dark:text-stone-500 uppercase font-semibold">Selling Price</div>
+                    <div className="font-bold font-mono text-stone-900 dark:text-stone-100 mt-0.5">₹{item.price}</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-warm-50 border border-warm-100">
-                    <div className="text-[10px] text-stone-400 uppercase font-semibold">Food Cost</div>
-                    <div className="font-bold text-stone-700 mt-0.5">₹{item.costPrice}</div>
+                  <div className="p-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <div className="text-[10px] text-stone-400 dark:text-stone-500 uppercase font-semibold">Food Cost</div>
+                    <div className="font-bold font-mono text-stone-700 dark:text-stone-300 mt-0.5">₹{item.costPrice}</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-forest-50 border border-forest-100">
-                    <div className="text-[10px] text-forest-700 uppercase font-semibold">Margin</div>
-                    <div className="font-bold text-forest-900 mt-0.5">{item.marginPercent}%</div>
+                  <div className="p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800">
+                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-semibold">Margin</div>
+                    <div className="font-bold font-mono text-emerald-800 dark:text-emerald-300 mt-0.5">{item.marginPercent}%</div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[11px] text-stone-500">
+                <div className="mt-3 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3.5 h-3.5 text-stone-400" />
                     <span>Prep: {item.prepTimeMinutes || 15} mins</span>
                   </div>
                   <Link
                     to={`/recipes?dishId=${item.id}`}
-                    className="font-semibold text-forest-900 hover:text-forest-700"
+                    className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
                   >
                     View Recipe BOM →
                   </Link>
@@ -543,30 +535,31 @@ export const MenuPage = () => {
 
       {/* Add / Edit Menu Item Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="font-bold text-lg text-forest-900">
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
                   {editingItem ? `Edit Dish: ${editingItem.name}` : "Add New Menu Item"}
                 </h3>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   {editingItem
                     ? "Update selling price, category, and preparation specs"
                     : "Create a dish for POS sales catalog and recipe explosion"}
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveItem} className="mt-4 space-y-4">
+            <form onSubmit={handleSaveItem} className="mt-4 space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">
+                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
                   Dish Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -575,45 +568,45 @@ export const MenuPage = () => {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g. Gujarati Thali, Dosa, Tea"
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-warm-50 border border-warm-200 text-stone-900 focus:outline-none focus:border-forest-800"
+                  className="w-full px-3 py-2 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Category</label>
+                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">Category</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
                   >
-                    <option value="Thali">Thali</option>
                     <option value="Mains">Mains</option>
+                    <option value="Starters">Starters</option>
+                    <option value="Thali">Thali</option>
                     <option value="South Indian">South Indian</option>
                     <option value="Snacks">Snacks</option>
                     <option value="Beverages">Beverages</option>
-                    <option value="Starters">Starters</option>
                     <option value="Breads">Breads</option>
                     <option value="Desserts">Desserts</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Dietary Type</label>
+                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">Dietary Type</label>
                   <select
                     value={formIsVeg ? "veg" : "nonveg"}
                     onChange={(e) => setFormIsVeg(e.target.value === "veg")}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
                   >
-                    <option value="veg">Pure Vegetarian (Green)</option>
-                    <option value="nonveg">Non-Vegetarian (Red)</option>
+                    <option value="veg">Pure Vegetarian (🌱)</option>
+                    <option value="nonveg">Non-Vegetarian (🍗)</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">
+                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
                     Selling Price (₹) <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -623,59 +616,59 @@ export const MenuPage = () => {
                     step="0.5"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Estimated Cost (₹)</label>
+                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">Estimated Cost (₹)</label>
                   <input
                     type="number"
                     min={0}
                     step="0.5"
                     value={formCost}
                     onChange={(e) => setFormCost(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Prep Time (mins)</label>
+                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">Prep Time (mins)</label>
                   <input
                     type="number"
                     required
                     min={1}
                     value={formPrepTime}
                     onChange={(e) => setFormPrepTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Description</label>
+                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
                   placeholder="Ingredients, accompaniments, or culinary notes..."
-                  className="w-full px-3 py-2 text-xs rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                  className="w-full px-3 py-2 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold"
+                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-forest-900 hover:bg-forest-950 text-white text-xs font-semibold shadow transition flex items-center space-x-1"
+                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1 cursor-pointer"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{editingItem ? "Update Dish" : "Save Item"}</span>
@@ -688,11 +681,11 @@ export const MenuPage = () => {
 
       {/* Delete Confirmation Modal */}
       {itemToDelete && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in">
-            <h3 className="font-bold text-base text-rose-900">Delete Menu Item</h3>
-            <p className="text-xs text-stone-600 mt-2">
-              Are you sure you want to delete <strong className="text-stone-900">"{itemToDelete.name}"</strong>?
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-sm w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
+            <h3 className="font-bold text-base text-rose-700 dark:text-rose-400">Delete Menu Item</h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400 mt-2">
+              Are you sure you want to delete <strong className="text-stone-900 dark:text-stone-100">"{itemToDelete.name}"</strong>?
               This will also remove its associated Bill of Materials recipe.
             </p>
 
@@ -701,7 +694,7 @@ export const MenuPage = () => {
                 type="button"
                 onClick={() => setItemToDelete(null)}
                 disabled={submitting}
-                className="px-4 py-2 rounded-lg bg-stone-200 text-stone-800 text-xs font-semibold"
+                className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -709,7 +702,7 @@ export const MenuPage = () => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={submitting}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center space-x-1"
+                className="px-4 py-2 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium flex items-center space-x-1 cursor-pointer"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Delete Permanently</span>
@@ -721,3 +714,5 @@ export const MenuPage = () => {
     </div>
   )
 }
+
+export default MenuPage

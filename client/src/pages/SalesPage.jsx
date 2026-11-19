@@ -147,7 +147,6 @@ export const SalesPage = () => {
     setFormCustomer("Walk-in Guest")
     setFormPayment("UPI")
     setFormNotes("")
-    // Default to first menu item with qty 1
     if (menuItems.length > 0) {
       setFormItems([{ menuItemId: menuItems[0].id, quantity: 1 }])
     } else {
@@ -368,17 +367,17 @@ export const SalesPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200 dark:border-stone-800">
         <div>
           <div className="flex items-center space-x-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               Sales & POS Management
             </h1>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
               Live SQLite POS
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5">
             Real-time dining and takeaway transactions, CSV sales import, and automated FEFO ingredient deductions.
           </p>
         </div>
@@ -387,10 +386,10 @@ export const SalesPage = () => {
           <button
             onClick={() => fetchSales(true)}
             disabled={refreshing}
-            className="p-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1 cursor-pointer"
+            className="p-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1 cursor-pointer shadow-xs"
             title="Refresh from Database"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-forest-800" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
           </button>
 
@@ -400,17 +399,17 @@ export const SalesPage = () => {
               setCsvResult(null)
               setShowCsvModal(true)
             }}
-            className="px-3.5 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
           >
-            <Upload className="w-3.5 h-3.5 text-stone-500" />
+            <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
             <span>Upload CSV</span>
           </button>
 
           <button
             onClick={handleOpenAddModal}
-            className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-300" />
+            <Plus className="w-3.5 h-3.5" />
             <span>New Order</span>
           </button>
         </div>
@@ -418,67 +417,67 @@ export const SalesPage = () => {
 
       {/* Notifications */}
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between animate-in fade-in">
+        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{successMsg}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900">
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between animate-in fade-in">
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs flex items-center justify-between animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span className="font-medium">{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-rose-700 hover:text-rose-900">
+          <button onClick={() => setError(null)} className="text-rose-700 dark:text-rose-300 hover:opacity-75 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Filtered Orders</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">{totalCount}</div>
-          <p className="text-[11px] text-emerald-700 font-medium mt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Filtered Orders</div>
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">{totalCount}</div>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
             {sales.filter((o) => o.status === "completed").length} Completed in current view
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Total Sales Turnover</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Total Sales Turnover</div>
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
             ₹{totalRevenue.toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">Net gross receipts (inc. GST)</p>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Net gross receipts (inc. GST)</p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Average Ticket Size</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Average Ticket Size</div>
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
             ₹{averageTicket.toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">Per dining transaction</p>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Per dining transaction</p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Total Portions Served</div>
-          <div className="text-2xl font-semibold text-stone-900 tracking-tight mt-1.5 font-sans">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Total Portions Served</div>
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
             {totalPortions}
-            <span className="text-xs font-normal text-stone-500 ml-1">dishes</span>
+            <span className="text-xs font-normal text-stone-500 dark:text-stone-400 ml-1.5">dishes</span>
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">Prepared and dispatched</p>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Prepared and dispatched</p>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
+      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3 shadow-xs">
         {/* Row 1: Search & Period Tabs */}
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Search bar */}
@@ -489,12 +488,12 @@ export const SalesPage = () => {
               placeholder="Search by Order #, Customer, Table #, or Dish name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-md bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-400"
+              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none"
             />
           </div>
 
           {/* Period Selector Tabs */}
-          <div className="inline-flex items-center p-0.5 rounded-md bg-stone-100 border border-stone-200/60 text-xs">
+          <div className="inline-flex items-center p-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs">
             {[
               { id: "all", label: "All History" },
               { id: "daily", label: "Today" },
@@ -503,6 +502,7 @@ export const SalesPage = () => {
             ].map((p) => (
               <button
                 key={p.id}
+                type="button"
                 onClick={() => {
                   setPeriod(p.id)
                   setStartDate("")
@@ -510,8 +510,8 @@ export const SalesPage = () => {
                 }}
                 className={`px-3 py-1 rounded text-xs font-medium transition cursor-pointer ${
                   period === p.id
-                    ? "bg-white text-stone-900 shadow-xs font-semibold"
-                    : "text-stone-600 hover:text-stone-900"
+                    ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
                 }`}
               >
                 {p.label}
@@ -521,16 +521,16 @@ export const SalesPage = () => {
         </div>
 
         {/* Row 2: Secondary Dropdown Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs pt-2 border-t border-warm-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs pt-2 border-t border-stone-100 dark:border-stone-800">
           {/* Menu Item Filter */}
           <div>
-            <label className="block text-[11px] font-semibold text-stone-500 mb-1">
+            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
               Filter by Dish:
             </label>
             <select
               value={selectedMenuItem}
               onChange={(e) => setSelectedMenuItem(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-warm-50 border border-warm-200 text-stone-800"
+              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
             >
               <option value="all">All Menu Dishes</option>
               {menuItems.map((m) => (
@@ -543,13 +543,13 @@ export const SalesPage = () => {
 
           {/* Channel Filter */}
           <div>
-            <label className="block text-[11px] font-semibold text-stone-500 mb-1">
+            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
               Sales Channel:
             </label>
             <select
               value={selectedChannel}
               onChange={(e) => setSelectedChannel(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-warm-50 border border-warm-200 text-stone-800"
+              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
             >
               <option value="all">All Channels</option>
               <option value="Dine-in">Dine-in</option>
@@ -560,7 +560,7 @@ export const SalesPage = () => {
 
           {/* Start Date */}
           <div>
-            <label className="block text-[11px] font-semibold text-stone-500 mb-1">
+            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
               From Date:
             </label>
             <input
@@ -570,13 +570,13 @@ export const SalesPage = () => {
                 setStartDate(e.target.value)
                 setPeriod("all")
               }}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-warm-50 border border-warm-200 text-stone-800"
+              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
             />
           </div>
 
           {/* End Date */}
           <div>
-            <label className="block text-[11px] font-semibold text-stone-500 mb-1">
+            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
               To Date:
             </label>
             <input
@@ -586,24 +586,24 @@ export const SalesPage = () => {
                 setEndDate(e.target.value)
                 setPeriod("all")
               }}
-              className="w-full px-2.5 py-1.5 rounded-lg bg-warm-50 border border-warm-200 text-stone-800"
+              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
             />
           </div>
         </div>
       </div>
 
       {/* Orders Data Table */}
-      <div className="rounded-lg bg-white border border-stone-200 overflow-hidden">
+      <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden shadow-xs">
         {loading ? (
           <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-6 h-6 text-stone-400 animate-spin" />
-            <p className="text-xs text-stone-500">Loading sales records...</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Loading sales records...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase tracking-wider text-[11px] font-semibold">
+                <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
                   <th className="py-3 px-4">Order #</th>
                   <th className="py-3 px-4">Date & Time</th>
                   <th className="py-3 px-4">Channel & Table</th>
@@ -615,58 +615,58 @@ export const SalesPage = () => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100 text-stone-800">
+              <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
                 {sales.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-stone-400">
+                    <td colSpan={9} className="py-12 text-center text-stone-400 dark:text-stone-500">
                       No sales records found matching your filter criteria.
                     </td>
                   </tr>
                 ) : (
                   sales.map((ord) => (
-                    <tr key={ord.id} className="hover:bg-stone-50/60 transition-colors">
-                      <td className="py-2.5 px-4 font-mono font-medium text-stone-900">
+                    <tr key={ord.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/50 transition-colors">
+                      <td className="py-2.5 px-4 font-mono font-medium text-stone-900 dark:text-stone-100">
                         {ord.orderNumber}
                       </td>
-                      <td className="py-2.5 px-4 text-stone-500 font-mono text-[11px]">
+                      <td className="py-2.5 px-4 text-stone-500 dark:text-stone-400 font-mono text-[11px]">
                         <div>{ord.date}</div>
-                        <div className="text-stone-400">{ord.time}</div>
+                        <div className="text-stone-400 dark:text-stone-500">{ord.time}</div>
                       </td>
                       <td className="py-2.5 px-4">
-                        <span className="font-medium text-stone-900">{ord.channel}</span>
+                        <span className="font-medium text-stone-900 dark:text-stone-100">{ord.channel}</span>
                         {ord.tableNumber && (
-                          <span className="ml-1 text-stone-500 text-[11px]">({ord.tableNumber})</span>
+                          <span className="ml-1 text-stone-500 dark:text-stone-400 text-[11px]">({ord.tableNumber})</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4 text-stone-700">{ord.customerName}</td>
-                      <td className="py-2.5 px-4 max-w-xs truncate text-stone-600">
+                      <td className="py-2.5 px-4 text-stone-700 dark:text-stone-300">{ord.customerName}</td>
+                      <td className="py-2.5 px-4 max-w-xs truncate text-stone-600 dark:text-stone-400">
                         {ord.items && ord.items.length > 0
                           ? ord.items.map((i) => `${i.quantity}x ${i.name}`).join(", ")
                           : "No dishes"}
                       </td>
                       <td className="py-2.5 px-4">
-                        <span className="inline-flex items-center space-x-1 font-mono text-[11px] bg-stone-50 px-2 py-0.5 rounded border border-stone-200">
+                        <span className="inline-flex items-center space-x-1 font-mono text-[11px] bg-stone-50 dark:bg-stone-800 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300">
                           {ord.paymentMethod === "UPI" ? (
-                            <QrCode className="w-3 h-3 text-stone-600" />
+                            <QrCode className="w-3 h-3 text-stone-500" />
                           ) : ord.paymentMethod === "Cash" ? (
-                            <Banknote className="w-3 h-3 text-stone-600" />
+                            <Banknote className="w-3 h-3 text-stone-500" />
                           ) : (
-                            <CreditCard className="w-3 h-3 text-stone-600" />
+                            <CreditCard className="w-3 h-3 text-stone-500" />
                           )}
                           <span>{ord.paymentMethod}</span>
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-stone-900">
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-stone-900 dark:text-stone-100">
                         ₹{(ord.totalAmount || 0).toLocaleString("en-IN")}
                       </td>
                       <td className="py-2.5 px-4">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider ${
                             ord.status === "completed"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                               : ord.status === "in-kitchen"
-                              ? "bg-amber-50 text-amber-800 border border-amber-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                              : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                           }`}
                         >
                           {ord.status}
@@ -675,7 +675,7 @@ export const SalesPage = () => {
                       <td className="py-2.5 px-4 text-right space-x-1">
                         <button
                           onClick={() => setSelectedOrder(ord)}
-                          className="px-2 py-1 rounded bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-medium transition inline-flex items-center space-x-1 cursor-pointer"
+                          className="px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition inline-flex items-center space-x-1 cursor-pointer"
                           title="Inspect Order Bill"
                         >
                           <Eye className="w-3 h-3" />
@@ -683,14 +683,14 @@ export const SalesPage = () => {
                         </button>
                         <button
                           onClick={() => handleOpenEditModal(ord)}
-                          className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                          className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
                           title="Edit Sale"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setOrderToDelete(ord)}
-                          className="p-1 rounded text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          className="p-1 rounded text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                           title="Delete Record"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -707,108 +707,110 @@ export const SalesPage = () => {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="font-bold text-lg text-forest-900">
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
                   Order Details — {selectedOrder.orderNumber}
                 </h3>
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   {selectedOrder.date} • {selectedOrder.time} • {selectedOrder.channel}{" "}
                   {selectedOrder.tableNumber ? `(${selectedOrder.tableNumber})` : ""}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="mt-4 space-y-4">
-              <div className="bg-warm-50 p-3 rounded-xl border border-warm-200 text-xs space-y-1">
+              <div className="bg-stone-50 dark:bg-stone-800/70 p-3 rounded-lg border border-stone-200 dark:border-stone-700 text-xs space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Customer:</span>
-                  <span className="font-semibold text-stone-900">{selectedOrder.customerName}</span>
+                  <span className="text-stone-500 dark:text-stone-400">Customer:</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedOrder.customerName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Payment Mode:</span>
-                  <span className="font-semibold text-stone-900">{selectedOrder.paymentMethod}</span>
+                  <span className="text-stone-500 dark:text-stone-400">Payment Mode:</span>
+                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedOrder.paymentMethod}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-500">Status:</span>
-                  <span className="font-bold text-forest-800 capitalize">{selectedOrder.status}</span>
+                  <span className="text-stone-500 dark:text-stone-400">Status:</span>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-400 capitalize">{selectedOrder.status}</span>
                 </div>
                 {selectedOrder.notes && (
-                  <div className="flex justify-between pt-1 border-t border-warm-200">
-                    <span className="text-stone-500">Notes:</span>
-                    <span className="text-stone-800 italic">{selectedOrder.notes}</span>
+                  <div className="flex justify-between pt-1 border-t border-stone-200 dark:border-stone-700">
+                    <span className="text-stone-500 dark:text-stone-400">Notes:</span>
+                    <span className="text-stone-800 dark:text-stone-200 italic">{selectedOrder.notes}</span>
                   </div>
                 )}
               </div>
 
               {/* Items List */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
                   Ordered Dishes
                 </h4>
-                <div className="divide-y divide-warm-100 border border-warm-200 rounded-xl overflow-hidden text-xs">
+                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden text-xs">
                   {selectedOrder.items?.map((it, idx) => (
-                    <div key={idx} className="p-2.5 flex items-center justify-between bg-white">
+                    <div key={idx} className="p-2.5 flex items-center justify-between bg-white dark:bg-stone-900">
                       <div>
-                        <span className="font-semibold text-stone-900">{it.name}</span>
-                        <span className="text-stone-400 ml-2">x {it.quantity}</span>
+                        <span className="font-semibold text-stone-900 dark:text-stone-100">{it.name}</span>
+                        <span className="text-stone-400 dark:text-stone-500 ml-2">x {it.quantity}</span>
                       </div>
-                      <span className="font-bold text-stone-900">₹{it.subtotal}</span>
+                      <span className="font-bold font-mono text-stone-900 dark:text-stone-100">₹{it.subtotal}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Bill totals */}
-              <div className="bg-warm-100/70 p-3 rounded-xl space-y-1.5 text-xs">
-                <div className="flex justify-between text-stone-600">
+              <div className="bg-stone-50 dark:bg-stone-800/50 p-3 rounded-lg space-y-1.5 text-xs border border-stone-200 dark:border-stone-700">
+                <div className="flex justify-between text-stone-600 dark:text-stone-400">
                   <span>Subtotal:</span>
-                  <span>₹{selectedOrder.subtotal}</span>
+                  <span className="font-mono">₹{selectedOrder.subtotal}</span>
                 </div>
-                <div className="flex justify-between text-stone-600">
+                <div className="flex justify-between text-stone-600 dark:text-stone-400">
                   <span>GST (5%):</span>
-                  <span>₹{selectedOrder.tax}</span>
+                  <span className="font-mono">₹{selectedOrder.tax}</span>
                 </div>
-                <div className="flex justify-between font-bold text-sm text-forest-900 pt-1.5 border-t border-warm-200">
+                <div className="flex justify-between font-bold text-sm text-stone-900 dark:text-stone-100 pt-1.5 border-t border-stone-200 dark:border-stone-700">
                   <span>Grand Total:</span>
-                  <span>₹{selectedOrder.totalAmount}</span>
+                  <span className="font-mono text-emerald-700 dark:text-emerald-400">₹{selectedOrder.totalAmount}</span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-forest-50 border border-forest-100 text-xs text-forest-900">
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">
                 <div className="font-semibold flex items-center space-x-1">
-                  <ChefHat className="w-3.5 h-3.5 text-forest-700" />
+                  <ChefHat className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>FEFO Inventory Decrement:</span>
                 </div>
-                <p className="text-[11px] text-forest-800 mt-0.5">
-                  Ingredients deduced according to Bill of Materials from the oldest active batches in SQLite.
+                <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
+                  Ingredients deduced according to Bill of Materials from the earliest expiring active batches.
                 </p>
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-warm-200 flex justify-between">
+            <div className="mt-5 pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-between">
               <button
+                type="button"
                 onClick={() => {
                   setSelectedOrder(null)
                   handleOpenEditModal(selectedOrder)
                 }}
-                className="px-3 py-1.5 rounded-lg bg-warm-100 hover:bg-warm-200 text-stone-700 text-xs font-semibold flex items-center space-x-1"
+                className="px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium flex items-center space-x-1 cursor-pointer"
               >
                 <Edit2 className="w-3 h-3" />
                 <span>Edit This Order</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold"
+                className="px-4 py-1.5 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium cursor-pointer"
               >
                 Close
               </button>
@@ -819,18 +821,19 @@ export const SalesPage = () => {
 
       {/* New POS Order / Daily Sale Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-xl w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-xl w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="font-bold text-lg text-forest-900">Add Daily Sale / POS Order</h3>
-                <p className="text-xs text-stone-500">
-                  Record canteen dining or takeaway bill with automatic FEFO stock decrement
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Add Daily Sale / POS Order</h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Record dining or takeaway bill with automatic FEFO stock decrement
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -839,7 +842,7 @@ export const SalesPage = () => {
             <form onSubmit={handleCreateSale} className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">
                     Sales Date <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -847,16 +850,16 @@ export const SalesPage = () => {
                     required
                     value={formSalesDate}
                     onChange={(e) => setFormSalesDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Channel</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Channel</label>
                   <select
                     value={formChannel}
                     onChange={(e) => setFormChannel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   >
                     <option value="Dine-in">Dine-in</option>
                     <option value="Takeaway">Takeaway</option>
@@ -867,25 +870,25 @@ export const SalesPage = () => {
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">
                     {formChannel === "Dine-in" ? "Table Number" : "Token / Pickup"}
                   </label>
                   <input
                     type="text"
                     value={formTable}
                     onChange={(e) => setFormTable(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                     placeholder="e.g. Table 4"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Customer Name</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Customer Name</label>
                   <input
                     type="text"
                     value={formCustomer}
                     onChange={(e) => setFormCustomer(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                     placeholder="Walk-in Guest"
                   />
                 </div>
@@ -893,11 +896,11 @@ export const SalesPage = () => {
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Payment Method</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Payment Method</label>
                   <select
                     value={formPayment}
                     onChange={(e) => setFormPayment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   >
                     <option value="UPI">UPI / QR</option>
                     <option value="Cash">Cash</option>
@@ -906,12 +909,12 @@ export const SalesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Notes / Instructions</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Notes / Instructions</label>
                   <input
                     type="text"
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                     placeholder="Less spicy, extra pickle..."
                   />
                 </div>
@@ -919,19 +922,19 @@ export const SalesPage = () => {
 
               {/* Dish Selection Grid */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
-                  Select Canteen Dishes to Add
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
+                  Select Dishes to Add
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2 border border-warm-200 rounded-xl bg-warm-50/50">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50/60 dark:bg-stone-800/40">
                   {menuItems.map((dish) => (
                     <button
                       type="button"
                       key={dish.id}
                       onClick={() => handleAddItemToForm(dish.id)}
-                      className="p-2 text-left rounded-lg bg-white border border-warm-200 hover:border-forest-700 text-xs transition"
+                      className="p-2 text-left rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-emerald-600 dark:hover:border-emerald-500 text-xs transition cursor-pointer"
                     >
-                      <div className="font-semibold text-stone-900 truncate">{dish.name}</div>
-                      <div className="text-[11px] text-stone-500">₹{dish.price}</div>
+                      <div className="font-semibold text-stone-900 dark:text-stone-100 truncate">{dish.name}</div>
+                      <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">₹{dish.price}</div>
                     </button>
                   ))}
                 </div>
@@ -939,25 +942,25 @@ export const SalesPage = () => {
 
               {/* Order Basket */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
                   Order Basket ({formItems.length} items)
                 </label>
-                <div className="divide-y divide-warm-100 border border-warm-200 rounded-xl overflow-hidden text-xs max-h-40 overflow-y-auto">
+                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden text-xs max-h-40 overflow-y-auto">
                   {formItems.length === 0 ? (
-                    <div className="p-4 text-center text-stone-400">
+                    <div className="p-4 text-center text-stone-400 dark:text-stone-500">
                       No dishes added to this order yet. Click a dish above.
                     </div>
                   ) : (
                     formItems.map((sel) => {
                       const dish = menuItems.find((m) => m.id === sel.menuItemId)
                       return (
-                        <div key={sel.menuItemId} className="p-2.5 flex items-center justify-between bg-white">
-                          <span className="font-medium text-stone-800">{dish?.name || "Dish"}</span>
-                          <div className="flex items-center space-x-2">
+                        <div key={sel.menuItemId} className="p-2.5 flex items-center justify-between bg-white dark:bg-stone-900">
+                          <span className="font-medium text-stone-800 dark:text-stone-200 truncate pr-2">{dish?.name || "Dish"}</span>
+                          <div className="flex items-center space-x-2 shrink-0">
                             <button
                               type="button"
                               onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity - 1)}
-                              className="w-6 h-6 rounded bg-warm-100 hover:bg-warm-200 text-stone-700 font-bold"
+                              className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
                             >
                               -
                             </button>
@@ -965,11 +968,11 @@ export const SalesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity + 1)}
-                              className="w-6 h-6 rounded bg-warm-100 hover:bg-warm-200 text-stone-700 font-bold"
+                              className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
                             >
                               +
                             </button>
-                            <span className="font-bold w-16 text-right">
+                            <span className="font-mono font-bold w-16 text-right">
                               ₹{((dish?.price || 0) * sel.quantity).toFixed(2)}
                             </span>
                           </div>
@@ -981,34 +984,34 @@ export const SalesPage = () => {
               </div>
 
               {/* Total Calculation */}
-              <div className="p-3 bg-warm-100 rounded-xl space-y-1 text-xs">
-                <div className="flex justify-between">
+              <div className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-lg space-y-1 text-xs">
+                <div className="flex justify-between text-stone-600 dark:text-stone-400">
                   <span>Subtotal:</span>
-                  <span>₹{formSubtotal.toFixed(2)}</span>
+                  <span className="font-mono">₹{formSubtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-stone-600 dark:text-stone-400">
                   <span>GST (5%):</span>
-                  <span>₹{formTax.toFixed(2)}</span>
+                  <span className="font-mono">₹{formTax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-sm text-forest-900 pt-1 border-t border-warm-200">
+                <div className="flex justify-between font-bold text-sm text-stone-900 dark:text-stone-100 pt-1 border-t border-stone-200 dark:border-stone-700">
                   <span>Grand Total:</span>
-                  <span>₹{formGrandTotal.toFixed(2)}</span>
+                  <span className="font-mono text-emerald-700 dark:text-emerald-400">₹{formGrandTotal.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold"
+                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || formItems.length === 0}
-                  className="px-4 py-2 rounded-lg bg-forest-900 hover:bg-forest-950 text-white text-xs font-semibold shadow transition disabled:opacity-50 flex items-center space-x-1"
+                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Confirm & Save Sale</span>
@@ -1021,18 +1024,19 @@ export const SalesPage = () => {
 
       {/* Edit Order Modal */}
       {showEditModal && editingOrder && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-warm-200 shadow-2xl p-6 text-stone-800 animate-in fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="font-bold text-lg text-forest-900">
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
                   Edit Sale Order — {editingOrder.orderNumber}
                 </h3>
-                <p className="text-xs text-stone-500">Modify customer, date, status, or dishes</p>
+                <p className="text-xs text-stone-500 dark:text-stone-400">Modify customer, date, status, or dishes</p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowEditModal(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1041,22 +1045,22 @@ export const SalesPage = () => {
             <form onSubmit={handleUpdateSale} className="mt-4 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Sales Date</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Sales Date</label>
                   <input
                     type="date"
                     required
                     value={formSalesDate}
                     onChange={(e) => setFormSalesDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Status</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Status</label>
                   <select
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   >
                     <option value="completed">Completed</option>
                     <option value="in-kitchen">In-Kitchen</option>
@@ -1067,11 +1071,11 @@ export const SalesPage = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Channel</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Channel</label>
                   <select
                     value={formChannel}
                     onChange={(e) => setFormChannel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   >
                     <option value="Dine-in">Dine-in</option>
                     <option value="Takeaway">Takeaway</option>
@@ -1080,33 +1084,33 @@ export const SalesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Table / Token</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Table / Token</label>
                   <input
                     type="text"
                     value={formTable}
                     onChange={(e) => setFormTable(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Customer</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Customer</label>
                   <input
                     type="text"
                     value={formCustomer}
                     onChange={(e) => setFormCustomer(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-600 mb-1">Payment Method</label>
+                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Payment Method</label>
                   <select
                     value={formPayment}
                     onChange={(e) => setFormPayment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-warm-50 border border-warm-200 text-stone-900"
+                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                   >
                     <option value="UPI">UPI / QR</option>
                     <option value="Cash">Cash</option>
@@ -1117,20 +1121,20 @@ export const SalesPage = () => {
 
               {/* Order Basket */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
                   Edit Dishes
                 </label>
-                <div className="divide-y divide-warm-100 border border-warm-200 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
                   {formItems.map((sel) => {
                     const dish = menuItems.find((m) => m.id === sel.menuItemId)
                     return (
-                      <div key={sel.menuItemId} className="p-2 flex items-center justify-between bg-white">
-                        <span className="font-medium text-stone-800">{dish?.name || "Dish"}</span>
+                      <div key={sel.menuItemId} className="p-2 flex items-center justify-between bg-white dark:bg-stone-900">
+                        <span className="font-medium text-stone-800 dark:text-stone-200">{dish?.name || "Dish"}</span>
                         <div className="flex items-center space-x-2">
                           <button
                             type="button"
                             onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity - 1)}
-                            className="w-6 h-6 rounded bg-warm-100 hover:bg-warm-200 text-stone-700 font-bold"
+                            className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
                           >
                             -
                           </button>
@@ -1138,7 +1142,7 @@ export const SalesPage = () => {
                           <button
                             type="button"
                             onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity + 1)}
-                            className="w-6 h-6 rounded bg-warm-100 hover:bg-warm-200 text-stone-700 font-bold"
+                            className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
                           >
                             +
                           </button>
@@ -1149,19 +1153,19 @@ export const SalesPage = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-stone-200 text-stone-800 font-semibold"
+                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-forest-900 text-white font-semibold shadow hover:bg-forest-950 flex items-center space-x-1"
+                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs flex items-center space-x-1 cursor-pointer"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Changes</span>
@@ -1174,37 +1178,38 @@ export const SalesPage = () => {
 
       {/* CSV Upload Modal */}
       {showCsvModal && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div className="flex items-center space-x-2">
-                <FileSpreadsheet className="w-5 h-5 text-forest-800" />
-                <h3 className="font-bold text-lg text-forest-900">Upload Sales CSV</h3>
+                <FileSpreadsheet className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Upload Sales CSV</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCsvModal(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleUploadCsv} className="mt-4 space-y-4 text-xs">
-              <p className="text-stone-600">
+              <p className="text-stone-600 dark:text-stone-400">
                 Bulk import sales history directly into SQLite. The system validates dates, dish names against
                 the canteen catalog, and processes recipe stock deductions.
               </p>
 
               {/* Download Sample */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-warm-50 border border-warm-200">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
                 <div>
-                  <div className="font-semibold text-stone-800">Need a valid template?</div>
-                  <div className="text-[11px] text-stone-500">Columns: date, item_name, quantity, channel, payment_method</div>
+                  <div className="font-semibold text-stone-800 dark:text-stone-200">Need a valid template?</div>
+                  <div className="text-[11px] text-stone-500 dark:text-stone-400">Columns: date, item_name, quantity, channel, payment_method</div>
                 </div>
                 <button
                   type="button"
                   onClick={handleDownloadSampleCsv}
-                  className="px-3 py-1.5 rounded-lg bg-forest-100 hover:bg-forest-200 text-forest-900 font-semibold flex items-center space-x-1 text-[11px]"
+                  className="px-3 py-1.5 rounded-md bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 font-medium flex items-center space-x-1 text-[11px] cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download Sample</span>
@@ -1214,20 +1219,20 @@ export const SalesPage = () => {
               {/* File Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-warm-300 rounded-xl p-6 text-center hover:border-forest-800 cursor-pointer transition bg-warm-50/50"
+                className="border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-lg p-6 text-center hover:border-emerald-600 dark:hover:border-emerald-500 cursor-pointer transition bg-stone-50/50 dark:bg-stone-800/40"
               >
                 <Upload className="w-8 h-8 text-stone-400 mx-auto mb-2" />
                 {csvFile ? (
                   <div>
-                    <span className="font-bold text-forest-900">{csvFile.name}</span>
-                    <span className="text-stone-500 block text-[11px]">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">{csvFile.name}</span>
+                    <span className="text-stone-500 dark:text-stone-400 block text-[11px]">
                       {(csvFile.size / 1024).toFixed(1)} KB — Ready to import
                     </span>
                   </div>
                 ) : (
                   <div>
-                    <span className="font-semibold text-stone-800">Click to select CSV file</span>
-                    <span className="text-stone-400 block text-[11px] mt-0.5">Supports UTF-8 .csv files</span>
+                    <span className="font-medium text-stone-800 dark:text-stone-200">Click to select CSV file</span>
+                    <span className="text-stone-400 dark:text-stone-500 block text-[11px] mt-0.5">Supports UTF-8 .csv files</span>
                   </div>
                 )}
                 <input
@@ -1241,9 +1246,9 @@ export const SalesPage = () => {
 
               {/* Result Summary */}
               {csvResult && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 space-y-1">
                   <div className="font-bold flex items-center space-x-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>Import Completed Successfully!</span>
                   </div>
                   <div className="text-[11px]">
@@ -1253,19 +1258,19 @@ export const SalesPage = () => {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2 pt-2">
+              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowCsvModal(false)}
                   disabled={submitting}
-                  className="px-4 py-2 rounded-lg bg-stone-200 text-stone-800 font-semibold"
+                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium cursor-pointer"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !csvFile}
-                  className="px-4 py-2 rounded-lg bg-forest-900 text-white font-semibold shadow hover:bg-forest-950 disabled:opacity-50 flex items-center space-x-1"
+                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium shadow-xs disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Upload & Import</span>
@@ -1278,12 +1283,12 @@ export const SalesPage = () => {
 
       {/* Delete Confirmation Modal */}
       {orderToDelete && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full border border-stone-200 shadow-xl p-5 text-stone-800 animate-in fade-in">
-            <h3 className="font-bold text-base text-rose-900">Delete Sale Order</h3>
-            <p className="text-xs text-stone-600 mt-2">
+        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-sm w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
+            <h3 className="font-bold text-base text-rose-700 dark:text-rose-400">Delete Sale Order</h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400 mt-2">
               Are you sure you want to delete order{" "}
-              <strong className="text-stone-900 font-mono">"{orderToDelete.orderNumber}"</strong>?
+              <strong className="text-stone-900 dark:text-stone-100 font-mono">"{orderToDelete.orderNumber}"</strong>?
               This record will be permanently deleted from the SQLite database.
             </p>
 
@@ -1292,7 +1297,7 @@ export const SalesPage = () => {
                 type="button"
                 onClick={() => setOrderToDelete(null)}
                 disabled={submitting}
-                className="px-4 py-2 rounded-lg bg-stone-200 text-stone-800 text-xs font-semibold"
+                className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -1300,7 +1305,7 @@ export const SalesPage = () => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={submitting}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center space-x-1"
+                className="px-4 py-2 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium flex items-center space-x-1 cursor-pointer"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Delete Permanently</span>
