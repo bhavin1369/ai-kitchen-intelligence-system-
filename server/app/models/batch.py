@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from app.extensions import db
 
 class InventoryBatch(db.Model):
@@ -15,7 +15,7 @@ class InventoryBatch(db.Model):
     expiry_date = db.Column(db.Date, nullable=False, index=True)
     supplier_name = db.Column(db.String(120), nullable=True)
     status = db.Column(db.String(32), default="active", nullable=False) # active, depleted, expired, discarded
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     movements = db.relationship("StockMovement", backref="batch", lazy="dynamic")
@@ -24,7 +24,13 @@ class InventoryBatch(db.Model):
     def days_to_expiry(self):
         if not self.expiry_date:
             return 999
-        delta = self.expiry_date - date.today()
+        exp = self.expiry_date
+        if isinstance(exp, str):
+            try:
+                exp = datetime.strptime(exp[:10], "%Y-%m-%d").date()
+            except ValueError:
+                return 999
+        delta = exp - date.today()
         return delta.days
 
     @property
@@ -77,7 +83,7 @@ class StockMovement(db.Model):
     reference_type = db.Column(db.String(32), nullable=True) # sales_order, purchase_order, waste_log
     notes = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     def to_dict(self):
         return {

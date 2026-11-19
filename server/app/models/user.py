@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class Kitchen(db.Model):
@@ -9,7 +9,7 @@ class Kitchen(db.Model):
     location = db.Column(db.String(255), nullable=True)
     currency = db.Column(db.String(10), default="INR")
     tax_rate = db.Column(db.Float, default=5.0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     users = db.relationship("User", backref="kitchen", lazy="dynamic")
@@ -39,7 +39,7 @@ class User(db.Model):
     full_name = db.Column(db.String(120), nullable=True)
     role = db.Column(db.String(32), default="staff", nullable=False)  # admin, chef, manager, staff
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {

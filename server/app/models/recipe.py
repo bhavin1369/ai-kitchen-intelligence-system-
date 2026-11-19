@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class Recipe(db.Model):
@@ -10,7 +10,7 @@ class Recipe(db.Model):
     quantity = db.Column(db.Float, nullable=False) # Portion quantity
     unit = db.Column(db.String(16), nullable=False) # kg, g, l, ml, pcs
     prep_loss_percentage = db.Column(db.Float, default=0.0) # Trimming loss or shrinkage %
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         db.UniqueConstraint("menu_item_id", "ingredient_id", name="uq_recipe_menu_ingredient"),

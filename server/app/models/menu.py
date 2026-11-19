@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class MenuItem(db.Model):
@@ -15,7 +15,7 @@ class MenuItem(db.Model):
     is_veg = db.Column(db.Boolean, default=True, nullable=False)
     prep_time_minutes = db.Column(db.Integer, default=15)
     description = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     recipes = db.relationship("Recipe", backref="menu_item", cascade="all, delete-orphan", lazy="joined")

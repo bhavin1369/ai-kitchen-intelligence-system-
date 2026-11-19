@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class WasteRecord(db.Model):
@@ -18,7 +18,7 @@ class WasteRecord(db.Model):
     reason = db.Column(db.String(64), nullable=False) # Spoilage, Expiry, Overproduction, Preparation Waste, Quality Rejection
     logged_by = db.Column(db.String(64), default="Head Chef", nullable=False)
     notes = db.Column(db.Text, nullable=True)
-    logged_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    logged_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     ingredient = db.relationship("Ingredient", lazy="joined")
     menu_item = db.relationship("MenuItem", lazy="joined")
@@ -68,7 +68,7 @@ class Forecast(db.Model):
     confidence_upper = db.Column(db.Float, nullable=True)
     baseline_quantity = db.Column(db.Float, nullable=True)
     factors_json = db.Column(db.Text, nullable=True) # JSON of festival, weather, day-of-week multipliers
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         db.UniqueConstraint("forecast_date", "menu_item_id", name="uq_forecast_date_menu_item"),

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class Purchase(db.Model):
@@ -16,7 +16,7 @@ class Purchase(db.Model):
     status = db.Column(db.String(32), default="draft", nullable=False) # draft, approved, sent, received, cancelled
     notes = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     items = db.relationship("PurchaseItem", backref="purchase", cascade="all, delete-orphan", lazy="joined")
@@ -52,7 +52,7 @@ class PurchaseItem(db.Model):
     unit = db.Column(db.String(16), nullable=False)
     unit_cost = db.Column(db.Float, nullable=False)
     subtotal = db.Column(db.Float, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     ingredient = db.relationship("Ingredient", lazy="joined")
 

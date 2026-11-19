@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from app.extensions import db
 
 class Ingredient(db.Model):
@@ -16,7 +16,7 @@ class Ingredient(db.Model):
     unit_cost = db.Column(db.Float, default=0.0, nullable=False)
     shelf_life_days = db.Column(db.Integer, default=7, nullable=False)
     preferred_supplier = db.Column(db.String(120), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     batches = db.relationship("InventoryBatch", backref="ingredient", cascade="all, delete-orphan", lazy="dynamic")
@@ -27,16 +27,14 @@ class Ingredient(db.Model):
     def usable_stock(self):
         """Returns stock available in non-expired, active batches only"""
         today = date.today()
-        active_batches = self.batches.filter_by(status="active").filter(
-            db.column("expiry_date") >= today
-        ).all()
-        return sum(b.remaining_quantity for b in active_batches)
+        active_batches = self.batches.filter_by(status="active").all()
+        return round(sum(b.remaining_quantity for b in active_batches if b.expiry_date and b.expiry_date >= today), 4)
 
     def to_dict(self, include_batches=False):
         today = date.today()
         # Calculate active non-expired stock
         batches_list = self.batches.filter_by(status="active").all()
-        usable_qty = sum(b.remaining_quantity for b in batches_list if b.expiry_date >= today)
+        usable_qty = sum(b.remaining_quantity for b in batches_list if b.expiry_date and b.expiry_date >= today)
         total_value = round(self.current_stock * self.unit_cost, 2)
 
         data = {
