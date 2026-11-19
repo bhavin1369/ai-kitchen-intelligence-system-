@@ -30,6 +30,7 @@ htmlcov/
 *.db-journal
 *.bak
 server/backups/*.db
+*test*.db
 
 # Environment variables & local secrets
 .env

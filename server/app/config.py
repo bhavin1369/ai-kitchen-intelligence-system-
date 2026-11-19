@@ -46,6 +46,11 @@ class Config:
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    SQLALCHEMY_ENGINE_OPTIONS = {}
+    TEST_DB_FILE = INSTANCE_DIR / "test_kitchen_intelligence.db"
+    clean_test_path = str(TEST_DB_FILE).replace("\\", "/")
+    DATABASE_PATH = str(TEST_DB_FILE)
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{clean_test_path}"
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "connect_args": {"check_same_thread": False, "timeout": 15}
+    }
 
