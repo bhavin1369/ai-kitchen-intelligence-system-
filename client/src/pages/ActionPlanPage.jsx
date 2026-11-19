@@ -140,54 +140,54 @@ export const ActionPlanPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               Kitchen Daily Action Plan
             </h1>
             <span
               className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider border ${
                 planStatus === "approved"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-stone-100 text-stone-700 border border-stone-200"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60"
+                  : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
               }`}
             >
               {planStatus === "approved" ? "Signed Off by Chef" : "Draft Morning Briefing"}
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
             Automated morning operational roadmap: ML demand forecasts, mise-en-place prep, procurement, and FEFO alerts.
           </p>
         </div>
 
         <div className="flex items-center flex-wrap gap-2">
           {/* Date Picker */}
-          <div className="flex items-center space-x-1.5 bg-white border border-stone-200 px-3 py-1.5 rounded-lg shadow-2xs">
-            <Calendar className="w-3.5 h-3.5 text-stone-600" />
+          <div className="flex items-center space-x-1.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-3 py-1.5 rounded-lg shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="text-xs font-medium text-stone-800 focus:outline-hidden bg-transparent"
+              className="text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none bg-transparent"
             />
           </div>
 
           <button
             onClick={handleResetPlan}
             disabled={resetting}
-            className="px-3 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
             title="Recalculate plan from live AI forecast & inventory"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${resetting ? "animate-spin text-stone-900" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${resetting ? "animate-spin text-stone-900 dark:text-stone-100" : ""}`} />
             <span>Reset from AI</span>
           </button>
 
           <button
             onClick={() => window.print()}
-            className="px-3 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5 text-stone-600" />
+            <Printer className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
             <span>Print Briefing</span>
           </button>
 
@@ -204,112 +204,112 @@ export const ActionPlanPage = () => {
 
       {/* Notifications */}
       {successMessage && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center space-x-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{successMessage}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center space-x-2">
-          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-800 dark:text-rose-200 flex items-center space-x-2">
+          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Target Menu Portions</span>
-            <UtensilsCrossed className="w-4 h-4 text-stone-600" />
+            <UtensilsCrossed className="w-4 h-4 text-stone-600 dark:text-stone-400" />
           </div>
-          <div className="text-2xl font-bold text-stone-900 mt-1 font-mono">
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
             {Math.round(totalPortions)} Portions
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             Across {menuTargets.length} active menu dishes
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Mise-en-place Tasks</span>
-            <ClipboardCheck className="w-4 h-4 text-stone-600" />
+            <ClipboardCheck className="w-4 h-4 text-stone-600 dark:text-stone-400" />
           </div>
-          <div className="text-2xl font-bold text-stone-900 mt-1 font-mono">
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
             {completedPrepCount} / {prepTasks.length} Completed
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             {prepTasks.length - completedPrepCount} preparation items remaining
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Urgent Purchases</span>
-            <ShoppingCart className="w-4 h-4 text-amber-600" />
+            <ShoppingCart className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="text-2xl font-bold text-stone-900 mt-1 font-mono">
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
             {urgentPurchases.length} Items (₹{Math.round(urgentPoCost).toLocaleString("en-IN")})
           </div>
-          <p className="text-[11px] text-amber-700 font-medium mt-1">
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">
             Immediate vendor reorders required
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">FEFO Queue</span>
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           </div>
-          <div className="text-2xl font-bold text-rose-700 mt-1 font-mono">
+          <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1 font-mono">
             {fefoPriorities.length} Batches Urgent
           </div>
-          <p className="text-[11px] text-rose-700 font-medium mt-1">
+          <p className="text-[11px] text-rose-700 dark:text-rose-400 font-medium mt-1">
             Must be consumed in today's menu prep
           </p>
         </div>
       </div>
 
       {/* ===================== SECTION 1: EXPECTED MENU DEMAND ===================== */}
-      <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-stone-200">
+      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
           <div>
-            <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-              <Sparkles className="w-3.5 h-3.5 text-stone-600" />
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+              <Sparkles className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
               <span>1. Expected Menu Demand & Portions (AI ML Forecasts)</span>
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
               Machine learning predictions with 95% Confidence Intervals. Kitchen managers can adjust targets as needed.
             </p>
           </div>
-          <span className="text-[11px] text-stone-400">Values are user-editable</span>
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">Values are user-editable</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-stone-50 text-stone-600 border-y border-stone-200 font-semibold text-[11px]">
+              <tr className="bg-stone-50 dark:bg-stone-800/60 text-stone-600 dark:text-stone-400 border-y border-stone-200 dark:border-stone-800 font-semibold text-[11px]">
                 <th className="py-2.5 px-3">Menu Dish</th>
                 <th className="py-2.5 px-3">Category</th>
                 <th className="py-2.5 px-3 text-right">AI Predicted Demand</th>
                 <th className="py-2.5 px-3 text-right">95% Confidence Band</th>
-                <th className="py-2.5 px-3 text-right font-semibold text-stone-900">Adjusted Kitchen Target</th>
+                <th className="py-2.5 px-3 text-right font-semibold text-stone-900 dark:text-stone-100">Adjusted Kitchen Target</th>
                 <th className="py-2.5 px-3">Driver Explanation</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 text-stone-800">
+            <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
               {(menuTargets || []).map((item, idx) => (
-                <tr key={idx} className="hover:bg-stone-50/50 transition">
-                  <td className="py-2.5 px-3 font-semibold text-stone-900">
+                <tr key={idx} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
+                  <td className="py-2.5 px-3 font-semibold text-stone-900 dark:text-stone-100">
                     {item.dishName}
                   </td>
-                  <td className="py-2.5 px-3 text-stone-500">{item.category}</td>
-                  <td className="py-2.5 px-3 font-mono font-semibold text-stone-900 text-right">
+                  <td className="py-2.5 px-3 text-stone-500 dark:text-stone-400">{item.category}</td>
+                  <td className="py-2.5 px-3 font-mono font-semibold text-stone-900 dark:text-stone-100 text-right">
                     {item.predictedPortions} portions
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-stone-500 text-right">
+                  <td className="py-2.5 px-3 font-mono text-stone-500 dark:text-stone-400 text-right">
                     {item.confidenceRange}
                   </td>
                   <td className="py-2.5 px-3 text-right">
@@ -320,12 +320,12 @@ export const ActionPlanPage = () => {
                         step="1"
                         value={item.adjustedPortions}
                         onChange={(e) => handlePortionChange(idx, e.target.value)}
-                        className="w-16 px-2 py-1 rounded bg-stone-50 border border-stone-200 font-mono font-semibold text-xs text-right focus:bg-white focus:outline-none focus:border-stone-400"
+                        className="w-16 px-2 py-1 rounded bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono font-semibold text-xs text-right text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400"
                       />
-                      <span className="text-[11px] text-stone-400">portions</span>
+                      <span className="text-[11px] text-stone-400 dark:text-stone-500">portions</span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-stone-600 text-[11px]">
+                  <td className="py-2.5 px-3 text-stone-600 dark:text-stone-400 text-[11px]">
                     {item.driverNote}
                   </td>
                 </tr>
@@ -336,18 +336,18 @@ export const ActionPlanPage = () => {
       </div>
 
       {/* ===================== SECTION 2: MISE-EN-PLACE PREP TASKS ===================== */}
-      <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-stone-200">
+      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-stone-200 dark:border-stone-800">
           <div>
-            <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-              <ClipboardCheck className="w-3.5 h-3.5 text-stone-600" />
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+              <ClipboardCheck className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
               <span>2. Mise-en-place Ingredient Prep Tasks (Recipe BOM Explosion)</span>
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
               Raw ingredients required for today's menu targets, accounting for trim loss. Check off items as prep finishes.
             </p>
           </div>
-          <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2.5 py-0.5 rounded-md border border-stone-200">
+          <span className="text-xs font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-2.5 py-0.5 rounded-md border border-stone-200 dark:border-stone-700">
             {completedPrepCount} of {prepTasks.length} Completed
           </span>
         </div>
@@ -359,28 +359,28 @@ export const ActionPlanPage = () => {
               onClick={() => togglePrepTask(task.taskId)}
               className={`p-3 rounded-lg border transition cursor-pointer flex items-start space-x-2.5 ${
                 task.completed
-                  ? "bg-stone-50 border-stone-200 text-stone-400"
-                  : "bg-white border-stone-200 hover:border-stone-300"
+                  ? "bg-stone-50 dark:bg-stone-800/40 border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-500"
+                  : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600"
               }`}
             >
               <div className="mt-0.5 shrink-0">
                 {task.completed ? (
-                  <CheckSquare className="w-4 h-4 text-emerald-600" />
+                  <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <Square className="w-4 h-4 text-stone-400" />
+                  <Square className="w-4 h-4 text-stone-400 dark:text-stone-500" />
                 )}
               </div>
 
               <div className="flex-1 text-xs">
-                <div className="flex items-center justify-between font-semibold text-stone-900">
-                  <span className={task.completed ? "line-through text-stone-400" : ""}>
+                <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
+                  <span className={task.completed ? "line-through text-stone-400 dark:text-stone-500" : ""}>
                     {task.name}
                   </span>
-                  <span className="font-mono text-stone-900">
+                  <span className="font-mono text-stone-900 dark:text-stone-100">
                     {task.requiredQuantity} {task.unit}
                   </span>
                 </div>
-                <div className="text-[11px] text-stone-500 mt-0.5 flex items-center justify-between">
+                <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 flex items-center justify-between">
                   <span>Station: {task.assignedStation}</span>
                   <span>{task.contributingDishesCount} dishes</span>
                 </div>
@@ -393,20 +393,20 @@ export const ActionPlanPage = () => {
       {/* ===================== SECTION 3: URGENT PURCHASES & FEFO ROTATION ===================== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Urgent Purchases */}
-        <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-            <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-              <ShoppingCart className="w-3.5 h-3.5 text-stone-600" />
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+              <ShoppingCart className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
               <span>3. Urgent Morning Purchases (Deficit Replenishment)</span>
             </h3>
-            <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded">
               {urgentPurchases.length} Items
             </span>
           </div>
 
           {(!urgentPurchases || urgentPurchases.length === 0) ? (
-            <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-lg border border-stone-200">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+            <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/40 rounded-lg border border-stone-200 dark:border-stone-800">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
               <span>Sufficient stock on hand for today's service! Zero urgent purchases needed.</span>
             </div>
           ) : (
@@ -414,19 +414,19 @@ export const ActionPlanPage = () => {
               {(urgentPurchases || []).map((p, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-lg bg-stone-50 border border-stone-200 text-xs flex items-center justify-between"
+                  className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-xs flex items-center justify-between"
                 >
                   <div>
-                    <div className="font-semibold text-stone-900">{p.name}</div>
-                    <div className="text-[11px] text-stone-500 mt-0.5">
+                    <div className="font-semibold text-stone-900 dark:text-stone-100">{p.name}</div>
+                    <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
                       Current: {p.usableStock} {p.unit} • Supplier: {p.preferredSupplier}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono font-bold text-stone-900">
+                    <div className="font-mono font-bold text-stone-900 dark:text-stone-100">
                       Order: {p.neededQuantity} {p.unit}
                     </div>
-                    <div className="text-[10px] text-stone-500 font-mono">₹{p.estCost}</div>
+                    <div className="text-[10px] text-stone-500 dark:text-stone-400 font-mono">₹{p.estCost}</div>
                   </div>
                 </div>
               ))}
@@ -435,13 +435,13 @@ export const ActionPlanPage = () => {
         </div>
 
         {/* FEFO Rotation & Waste Alerts */}
-        <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-stone-200">
-            <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span>4. Near-Expiry FEFO Stock & Waste Alerts</span>
             </h3>
-            <span className="text-[10px] font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 px-2 py-0.5 rounded">
               Priority Cook
             </span>
           </div>
@@ -450,16 +450,16 @@ export const ActionPlanPage = () => {
             {(fefoPriorities || []).map((f, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-lg bg-stone-50 border border-stone-200 text-xs flex items-center justify-between"
+                className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-xs flex items-center justify-between"
               >
                 <div>
-                  <div className="font-semibold text-stone-900">{f.ingredientName}</div>
-                  <div className="text-[11px] text-rose-700 font-medium">
+                  <div className="font-semibold text-stone-900 dark:text-stone-100">{f.ingredientName}</div>
+                  <div className="text-[11px] text-rose-700 dark:text-rose-400 font-medium">
                     Batch: {f.batchNumber} • Expires in {f.daysToExpiry} days
                   </div>
-                  <div className="text-[10px] text-stone-500 mt-0.5">{f.directive}</div>
+                  <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">{f.directive}</div>
                 </div>
-                <div className="text-right font-mono font-bold text-rose-700">
+                <div className="text-right font-mono font-bold text-rose-700 dark:text-rose-400">
                   {f.remainingQuantity} {f.unit}
                 </div>
               </div>
@@ -469,42 +469,42 @@ export const ActionPlanPage = () => {
       </div>
 
       {/* ===================== SECTION 5: MANAGER SIGN-OFF ===================== */}
-      <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
-        <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-          <UserCheck className="w-3.5 h-3.5 text-stone-600" />
+      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+        <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+          <UserCheck className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
           <span>5. Executive Chef / Manager Operational Sign-off</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block font-medium text-stone-700 mb-1">Morning Operational Notes</label>
+            <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Morning Operational Notes</label>
             <textarea
               rows={3}
               value={managerNotes}
               onChange={(e) => setManagerNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+              className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
               placeholder="e.g. Verified cold storage temperatures, assigned extra prep helper to curry station..."
             />
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="block font-medium text-stone-700 mb-1">Signed Off By</label>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Signed Off By</label>
               <input
                 type="text"
                 value={signedOffBy}
                 onChange={(e) => setSignedOffBy(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
               />
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center space-x-2 text-stone-700 font-medium cursor-pointer">
+              <label className="flex items-center space-x-2 text-stone-700 dark:text-stone-300 font-medium cursor-pointer">
                 <input
                   type="checkbox"
                   checked={planStatus === "approved"}
                   onChange={(e) => setPlanStatus(e.target.checked ? "approved" : "draft")}
-                  className="rounded text-forest-900 w-4 h-4"
+                  className="rounded text-forest-900 focus:ring-forest-600 w-4 h-4"
                 />
                 <span>Approve and Lock Morning Briefing</span>
               </label>
@@ -523,4 +523,3 @@ export const ActionPlanPage = () => {
     </div>
   )
 }
-

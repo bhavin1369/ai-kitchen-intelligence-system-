@@ -35,11 +35,13 @@ import {
 import { analyticsReport } from "../data/mockData"
 import { reportsService, wasteService } from "../services/api"
 import { useAuth } from "../context/AuthContext"
+import { useTheme } from "../context/ThemeContext"
 
 const CATEGORY_COLORS = ["#166534", "#d97706", "#2563eb", "#9333ea", "#0d9488", "#ea580c"]
 
 export const AnalyticsPage = () => {
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const [dateRange, setDateRange] = useState("30days")
   const [downloadSuccess, setDownloadSuccess] = useState("")
   const [financialData, setFinancialData] = useState(() => ({
@@ -126,17 +128,17 @@ export const AnalyticsPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200 dark:border-stone-800">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               Executive Analytics & Export Center
             </h1>
-            <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-forest-50 text-forest-800 border border-forest-200">
+            <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-forest-50 dark:bg-forest-950/40 text-forest-800 dark:text-forest-300 border border-forest-200 dark:border-forest-800/60">
               Audit & Compliance Ready
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
             Real-time gross revenue, Food Cost COGS, margin health, inventory valuation, and multi-format CSV audit exports.
           </p>
         </div>
@@ -154,86 +156,86 @@ export const AnalyticsPage = () => {
 
       {/* Success Notification */}
       {downloadSuccess && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center space-x-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
           <span>{downloadSuccess}</span>
         </div>
       )}
 
       {/* Error Notification */}
       {errorMsg && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-900 dark:text-rose-200 flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Gross Monthly Sales</div>
-          <div className="text-2xl font-bold font-mono text-stone-900 mt-2">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Gross Monthly Sales</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 mt-2">
             ₹{Number(financialData.grossSalesMonth || 0).toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-emerald-700 font-medium flex items-center mt-1">
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center mt-1">
             <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
             <span>+12.4% MoM organic growth</span>
           </p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Cost of Goods Sold (COGS)</div>
-          <div className="text-2xl font-bold font-mono text-stone-900 mt-2">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Cost of Goods Sold (COGS)</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 mt-2">
             ₹{Number(financialData.cogsCostMonth || 0).toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">{financialData.cogsPercent}% of gross revenue</p>
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">{financialData.cogsPercent}% of gross revenue</p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Gross Profit Margin</div>
-          <div className="text-2xl font-bold font-mono text-stone-900 mt-2">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Gross Profit Margin</div>
+          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 mt-2">
             {financialData.grossProfitMargin}%
           </div>
-          <p className="text-[11px] text-emerald-700 font-medium mt-1">+3.2% gain via recipe optimization</p>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">+3.2% gain via recipe optimization</p>
         </div>
 
-        <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200">
-          <div className="text-[11px] font-medium text-stone-500 uppercase tracking-wider">Food Waste Loss</div>
-          <div className="text-2xl font-bold font-mono text-rose-700 mt-2">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Food Waste Loss</div>
+          <div className="text-2xl font-bold font-mono text-rose-700 dark:text-rose-400 mt-2">
             ₹{Number(financialData.foodWasteTotalLoss || 0).toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-stone-500 font-medium flex items-center mt-1">
-            <ArrowDownRight className="w-3.5 h-3.5 mr-0.5 text-emerald-600" />
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 font-medium flex items-center mt-1">
+            <ArrowDownRight className="w-3.5 h-3.5 mr-0.5 text-emerald-600 dark:text-emerald-400" />
             <span>Audited Waste (FEFO Controlled)</span>
           </p>
         </div>
       </div>
 
       {/* COMPREHENSIVE CSV AUDIT REPORTS CENTER */}
-      <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 pb-3">
+      <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 dark:border-stone-800 pb-3">
           <div>
-            <h2 className="text-sm font-semibold text-stone-900 flex items-center space-x-2">
-              <FileSpreadsheet className="w-4 h-4 text-stone-600" />
+            <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+              <FileSpreadsheet className="w-4 h-4 text-stone-600 dark:text-stone-400" />
               <span>Audit-Ready Domain CSV Exports</span>
             </h2>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
               Download clean, compliant CSV datasets across all operational modules for accounting, audits, and analysis.
             </p>
           </div>
-          <span className="text-[11px] text-stone-400 font-mono">UTF-8 Encoded • RFC-4180</span>
+          <span className="text-[11px] text-stone-400 dark:text-stone-500 font-mono">UTF-8 Encoded • RFC-4180</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Sales Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">Sales History Ledger</div>
-              <div className="text-[11px] text-stone-500">Per-order timestamps, dishes, and amounts</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">Sales History Ledger</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">Per-order timestamps, dishes, and amounts</div>
             </div>
             <button
               onClick={() => triggerExport(reportsService.getSalesExportUrl(), "Sales History Ledger", "sales_history.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Sales CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -241,14 +243,14 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Forecasts Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">Demand Forecasts & Bounds</div>
-              <div className="text-[11px] text-stone-500">Predicted portions, 95% CIs, and festival lift</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">Demand Forecasts & Bounds</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">Predicted portions, 95% CIs, and festival lift</div>
             </div>
             <button
               onClick={() => triggerExport(reportsService.getForecastsExportUrl({ days: 14 }), "Demand Forecasts", "demand_forecasts_14d.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Forecasts CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -256,14 +258,14 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Model Performance Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">ML Model Performance</div>
-              <div className="text-[11px] text-stone-500">MAE, RMSE, and Baseline benchmark metrics</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">ML Model Performance</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">MAE, RMSE, and Baseline benchmark metrics</div>
             </div>
             <button
               onClick={() => triggerExport(reportsService.getModelPerformanceExportUrl(), "Model Performance", "ml_model_evaluation.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Model Performance CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -271,14 +273,14 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Inventory Valuation Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">Inventory Valuation & SKUs</div>
-              <div className="text-[11px] text-stone-500">Current stock, par levels, and carrying costs</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">Inventory Valuation & SKUs</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">Current stock, par levels, and carrying costs</div>
             </div>
             <button
               onClick={() => triggerExport(reportsService.getInventoryExportUrl(), "Inventory Valuation", "inventory_valuation.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Inventory CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -286,14 +288,14 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Purchases History Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">Purchase Orders (PO) Audit</div>
-              <div className="text-[11px] text-stone-500">Supplier orders, status, costs, and fulfillment</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">Purchase Orders (PO) Audit</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">Supplier orders, status, costs, and fulfillment</div>
             </div>
             <button
               onClick={() => triggerExport(reportsService.getPurchasesExportUrl(), "Purchases Orders", "purchases_orders.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Purchases CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -301,14 +303,14 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Waste Records Export */}
-          <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between hover:bg-stone-100/60 transition">
+          <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between hover:bg-stone-100/60 dark:hover:bg-stone-800 transition">
             <div>
-              <div className="font-semibold text-xs text-stone-900">Food Waste & Spoilage Log</div>
-              <div className="text-[11px] text-stone-500">Reason codes, financial losses, and notes</div>
+              <div className="font-semibold text-xs text-stone-900 dark:text-stone-100">Food Waste & Spoilage Log</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400">Reason codes, financial losses, and notes</div>
             </div>
             <button
               onClick={() => triggerExport(wasteService.getExportCsvUrl(), "Food Waste Audit Log", "waste_records_log.csv")}
-              className="p-1.5 rounded-md bg-white border border-stone-200 text-stone-600 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
+              className="p-1.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-forest-900 hover:text-white hover:border-forest-900 transition cursor-pointer shadow-2xs"
               title="Download Waste CSV"
             >
               <Download className="w-3.5 h-3.5" />
@@ -320,10 +322,10 @@ export const AnalyticsPage = () => {
       {/* Visual Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Monthly Trend: Revenue vs COGS vs Waste */}
-        <div className="lg:col-span-8 p-4 sm:p-5 rounded-lg bg-white border border-stone-200 space-y-3">
+        <div className="lg:col-span-8 p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
           <div>
-            <h2 className="text-sm font-semibold text-stone-900">Revenue, COGS & Waste Trend</h2>
-            <p className="text-[11px] text-stone-500">Correlation between sales volume, procurement expenditure, and shrinkage</p>
+            <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">Revenue, COGS & Waste Trend</h2>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">Correlation between sales volume, procurement expenditure, and shrinkage</p>
           </div>
 
           <div className="h-72 w-full pt-2">
@@ -332,20 +334,21 @@ export const AnalyticsPage = () => {
                 data={financialData.monthlyFinancials}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" vertical={false} />
-                <XAxis dataKey="month" stroke="#78716c" fontSize={11} tickLine={false} axisLine={{ stroke: "#e7e5e4" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#292524" : "#f5f5f4"} vertical={false} />
+                <XAxis dataKey="month" stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} tickLine={false} axisLine={{ stroke: isDark ? "#292524" : "#e7e5e4" }} />
                 <YAxis
-                  stroke="#78716c"
+                  stroke={isDark ? "#a8a29e" : "#78716c"}
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: "#e7e5e4" }}
+                  axisLine={{ stroke: isDark ? "#292524" : "#e7e5e4" }}
                   tickFormatter={(v) => `₹${v / 1000}k`}
                 />
                 <Tooltip
                   formatter={(val) => [`₹${Number(val).toLocaleString()}`, "Amount"]}
                   contentStyle={{
-                    backgroundColor: "#ffffff",
-                    borderColor: "#e7e5e4",
+                    backgroundColor: isDark ? "#1c1917" : "#ffffff",
+                    borderColor: isDark ? "#292524" : "#e7e5e4",
+                    color: isDark ? "#f5f5f4" : "#1c1917",
                     borderRadius: "6px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                     fontSize: "12px"
@@ -368,10 +371,10 @@ export const AnalyticsPage = () => {
         </div>
 
         {/* Category Contribution Pie Chart */}
-        <div className="lg:col-span-4 p-4 sm:p-5 rounded-lg bg-white border border-stone-200 flex flex-col justify-between">
+        <div className="lg:col-span-4 p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-stone-900">Sales by Category</h2>
-            <p className="text-[11px] text-stone-500">Revenue contribution across kitchen departments</p>
+            <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">Sales by Category</h2>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">Revenue contribution across kitchen departments</p>
           </div>
 
           <div className="h-56 w-full my-2">
@@ -393,8 +396,9 @@ export const AnalyticsPage = () => {
                 <Tooltip
                   formatter={(val) => [`${val}%`, "Contribution"]}
                   contentStyle={{
-                    backgroundColor: "#ffffff",
-                    borderColor: "#e7e5e4",
+                    backgroundColor: isDark ? "#1c1917" : "#ffffff",
+                    borderColor: isDark ? "#292524" : "#e7e5e4",
+                    color: isDark ? "#f5f5f4" : "#1c1917",
                     borderRadius: "6px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                     fontSize: "12px"
@@ -404,15 +408,15 @@ export const AnalyticsPage = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] pt-3 border-t border-stone-100">
+          <div className="grid grid-cols-2 gap-2 text-[11px] pt-3 border-t border-stone-100 dark:border-stone-800">
             {(financialData?.categoryBreakdown || []).map((cat, i) => (
               <div key={i} className="flex items-center space-x-1.5">
                 <span
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
                 />
-                <span className="text-stone-600 truncate">{cat.name}:</span>
-                <span className="font-semibold text-stone-900 font-mono">{cat.value}%</span>
+                <span className="text-stone-600 dark:text-stone-400 truncate">{cat.name}:</span>
+                <span className="font-semibold text-stone-900 dark:text-stone-100 font-mono">{cat.value}%</span>
               </div>
             ))}
           </div>
@@ -421,17 +425,17 @@ export const AnalyticsPage = () => {
 
       {/* DATABASE BACKUP & RECOVERY SECTION (ADMIN/MANAGER ONLY) */}
       {isAdminOrManager && (
-        <div className="p-4 sm:p-5 rounded-lg bg-white border border-stone-200 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-200 pb-3">
+        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-3">
             <div>
               <div className="flex items-center space-x-2">
-                <Database className="w-4 h-4 text-stone-600" />
-                <h3 className="font-semibold text-stone-900 text-sm">Disaster Recovery & Database Backups</h3>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Database className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm">Disaster Recovery & Database Backups</h3>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
                   SQLite Hot Backup
                 </span>
               </div>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                 Take transaction-consistent hot snapshots without locking live orders or inventory reads.
               </p>
             </div>
@@ -447,23 +451,23 @@ export const AnalyticsPage = () => {
           </div>
 
           {backups.length > 0 ? (
-            <div className="overflow-x-auto border border-stone-200 rounded-lg">
+            <div className="overflow-x-auto border border-stone-200 dark:border-stone-800 rounded-lg">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase tracking-wider text-[11px] font-semibold">
+                  <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
                     <th className="py-2.5 px-3">Backup File</th>
                     <th className="py-2.5 px-3 text-right">Size</th>
                     <th className="py-2.5 px-3">Created At</th>
                     <th className="py-2.5 px-3 text-right">Integrity Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 text-stone-800 font-mono">
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200 font-mono">
                   {(backups || []).map((b, idx) => (
-                    <tr key={idx} className="hover:bg-stone-50/70 transition">
-                      <td className="py-2.5 px-3 font-semibold text-stone-900 font-sans">{b.filename}</td>
-                      <td className="py-2.5 px-3 text-right text-stone-600">{b.sizeKb} KB</td>
-                      <td className="py-2.5 px-3 text-stone-500 font-sans">{new Date(b.createdAt).toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-right text-emerald-700 font-sans font-medium">
+                    <tr key={idx} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition">
+                      <td className="py-2.5 px-3 font-semibold text-stone-900 dark:text-stone-100 font-sans">{b.filename}</td>
+                      <td className="py-2.5 px-3 text-right text-stone-600 dark:text-stone-400">{b.sizeKb} KB</td>
+                      <td className="py-2.5 px-3 text-stone-500 dark:text-stone-400 font-sans">{new Date(b.createdAt).toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right text-emerald-700 dark:text-emerald-400 font-sans font-medium">
                         Verified Integrity
                       </td>
                     </tr>
@@ -472,7 +476,7 @@ export const AnalyticsPage = () => {
               </table>
             </div>
           ) : (
-            <div className="p-4 rounded-lg bg-stone-50 border border-stone-200 text-stone-500 text-xs text-center">
+            <div className="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 text-xs text-center">
               No previous backups found in directory. Click "Create Point-in-Time Snapshot" above to generate your first backup.
             </div>
           )}
@@ -480,27 +484,27 @@ export const AnalyticsPage = () => {
       )}
 
       {/* Summary Financial Performance Table */}
-      <div className="rounded-lg bg-white border border-stone-200 overflow-hidden">
-        <div className="p-4 border-b border-stone-200 flex items-center justify-between">
-          <h3 className="font-semibold text-stone-900 text-sm">Monthly Historical Financial Audit</h3>
-          <span className="text-xs text-stone-500 font-mono">Currency: INR (₹)</span>
+      <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden">
+        <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
+          <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-sm">Monthly Historical Financial Audit</h3>
+          <span className="text-xs text-stone-500 dark:text-stone-400 font-mono">Currency: INR (₹)</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase tracking-wider text-[11px] font-semibold">
+              <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
                 <th className="py-3 px-4">Period</th>
                 <th className="py-3 px-4 text-right">Gross Revenue</th>
                 <th className="py-3 px-4 text-right">Food Cost (COGS)</th>
                 <th className="py-3 px-4 text-right">COGS %</th>
-                <th className="py-3 px-4 text-right font-bold text-forest-900">Gross Margin %</th>
+                <th className="py-3 px-4 text-right font-bold text-forest-900 dark:text-forest-400">Gross Margin %</th>
                 <th className="py-3 px-4 text-right">Waste Loss</th>
                 <th className="py-3 px-4 text-right">Waste %</th>
                 <th className="py-3 px-4 text-right">Net Operating Gross</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 text-stone-800 font-mono">
+            <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200 font-mono">
               {(financialData?.monthlyFinancials || []).map((row, idx) => {
                 const cogsPct = ((row.cogs / row.revenue) * 100).toFixed(1)
                 const marginPct = (100 - cogsPct).toFixed(1)
@@ -508,15 +512,15 @@ export const AnalyticsPage = () => {
                 const netGross = row.revenue - row.cogs - row.waste
 
                 return (
-                  <tr key={idx} className="hover:bg-stone-50/70 transition">
-                    <td className="py-3 px-4 font-sans font-semibold text-stone-900">{row.month} 2026</td>
+                  <tr key={idx} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition">
+                    <td className="py-3 px-4 font-sans font-semibold text-stone-900 dark:text-stone-100">{row.month} 2026</td>
                     <td className="py-3 px-4 text-right">₹{Number(row.revenue).toLocaleString()}</td>
                     <td className="py-3 px-4 text-right">₹{Number(row.cogs).toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right text-stone-500">{cogsPct}%</td>
-                    <td className="py-3 px-4 text-right font-bold text-forest-900">{marginPct}%</td>
-                    <td className="py-3 px-4 text-right text-rose-700">₹{Number(row.waste).toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right text-stone-500">{wastePct}%</td>
-                    <td className="py-3 px-4 text-right font-bold text-stone-900">
+                    <td className="py-3 px-4 text-right text-stone-500 dark:text-stone-400">{cogsPct}%</td>
+                    <td className="py-3 px-4 text-right font-bold text-forest-900 dark:text-forest-400">{marginPct}%</td>
+                    <td className="py-3 px-4 text-right text-rose-700 dark:text-rose-400">₹{Number(row.waste).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-stone-500 dark:text-stone-400">{wastePct}%</td>
+                    <td className="py-3 px-4 text-right font-bold text-stone-900 dark:text-stone-100">
                       ₹{Number(netGross).toLocaleString()}
                     </td>
                   </tr>

@@ -39,6 +39,7 @@ import {
   Legend
 } from "recharts"
 import { wasteService, inventoryService, menuService } from "../services/api"
+import { useTheme } from "../context/ThemeContext"
 
 const REASON_COLORS = {
   Spoilage: "#e11d48", // rose
@@ -51,6 +52,7 @@ const REASON_COLORS = {
 }
 
 export const WasteManagementPage = () => {
+  const { isDark } = useTheme()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -381,18 +383,18 @@ export const WasteManagementPage = () => {
   return (
     <div className="space-y-6">
       {/* Top Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               Food Waste Management
             </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200 flex items-center space-x-1 uppercase tracking-wider">
-              <TrendingDown className="w-3.5 h-3.5 text-rose-600" />
+            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1 uppercase tracking-wider">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span>Loss Mitigation</span>
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
             Track daily spoilage, overproduction, FEFO shelf-life alerts, and predictive waste risk.
           </p>
         </div>
@@ -404,18 +406,18 @@ export const WasteManagementPage = () => {
               loadData()
             }}
             disabled={refreshing}
-            className="px-3 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-stone-900" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-stone-900 dark:text-stone-100" : ""}`} />
             <span>Refresh</span>
           </button>
 
           <a
             href={wasteService.getExportCsvUrl({ reason: reasonFilter, itemType: itemTypeFilter })}
             download
-            className="px-3.5 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-stone-600" />
+            <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
             <span>Export CSV</span>
           </a>
 
@@ -431,24 +433,24 @@ export const WasteManagementPage = () => {
 
       {/* Notifications */}
       {successMessage && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between animate-in fade-in">
+        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between animate-in fade-in">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{successMessage}</span>
           </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-900">
+          <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center justify-between">
+        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-900 dark:text-rose-200 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span className="font-medium">{errorMessage}</span>
           </div>
-          <button onClick={() => setErrorMessage(null)} className="text-rose-700 hover:text-rose-900">
+          <button onClick={() => setErrorMessage(null)} className="text-rose-700 dark:text-rose-300 hover:text-rose-900">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -456,68 +458,68 @@ export const WasteManagementPage = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Total Waste Loss</span>
-            <Trash2 className="w-4 h-4 text-rose-600" />
+            <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           </div>
-          <div className="text-2xl font-bold text-rose-700 mt-1 font-mono">
+          <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1 font-mono">
             ₹{(analyticsData?.totalFinancialLoss || 0).toLocaleString("en-IN")}
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             Across {analyticsData?.totalRecordsCount || (wasteLogs ? wasteLogs.length : 0)} logged incidents (last 30d)
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Physical Waste Volume</span>
-            <Layers className="w-4 h-4 text-stone-600" />
+            <Layers className="w-4 h-4 text-stone-600 dark:text-stone-400" />
           </div>
-          <div className="text-2xl font-bold text-stone-900 mt-1 font-mono">
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
             {(analyticsData?.totalQuantityLost || 0).toFixed(1)} Units
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             Discarded ingredients & unserved buffer
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">Waste-to-Sales Ratio</span>
-            <TrendingDown className="w-4 h-4 text-emerald-600" />
+            <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-stone-900 mt-1 font-mono">
+          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
             {analyticsData?.wasteToSalesRatio || 1.8}%
           </div>
-          <p className="text-[11px] text-stone-500 mt-1">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
             Target benchmark: &lt; 2.5% of gross revenue
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white border border-stone-200">
-          <div className="flex items-center justify-between text-stone-500">
+        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-[11px] font-medium uppercase tracking-wider">High-Risk Surplus</span>
-            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="text-2xl font-bold text-amber-700 mt-1 font-mono">
+          <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1 font-mono">
             {riskAnalysis?.highRiskCount ?? 0} SKUs at Risk
           </div>
-          <p className="text-[11px] text-amber-700 font-medium mt-1">
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">
             ₹{(riskAnalysis?.totalSurplusValueAtRisk || 0).toLocaleString("en-IN")} surplus at risk
           </p>
         </div>
       </div>
 
       {/* Main Tab Navigation */}
-      <div className="p-3.5 rounded-lg bg-white border border-stone-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="inline-flex bg-stone-100 p-0.5 rounded-lg text-xs font-medium">
+      <div className="p-3.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg text-xs font-medium">
           <button
             onClick={() => setActiveTab("logs")}
             className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
               activeTab === "logs"
-                ? "bg-white text-stone-900 font-semibold shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             Waste Logs ({(wasteLogs || []).length})
@@ -526,8 +528,8 @@ export const WasteManagementPage = () => {
             onClick={() => setActiveTab("analytics")}
             className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
               activeTab === "analytics"
-                ? "bg-white text-stone-900 font-semibold shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             Analytics & Trends
@@ -536,8 +538,8 @@ export const WasteManagementPage = () => {
             onClick={() => setActiveTab("expiry")}
             className={`px-3 py-1.5 rounded-md transition flex items-center space-x-1.5 cursor-pointer ${
               activeTab === "expiry"
-                ? "bg-white text-stone-900 font-semibold shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             <span>Expiry Alerts</span>
@@ -549,8 +551,8 @@ export const WasteManagementPage = () => {
             onClick={() => setActiveTab("risk")}
             className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
               activeTab === "risk"
-                ? "bg-white text-stone-900 font-semibold shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             Predictive Risk Analysis
@@ -559,16 +561,16 @@ export const WasteManagementPage = () => {
 
         {activeTab === "risk" && (
           <div className="flex items-center space-x-2 text-xs">
-            <span className="text-stone-500 font-medium text-[11px]">Risk Window:</span>
-            <div className="inline-flex bg-stone-100 p-0.5 rounded-lg">
+            <span className="text-stone-500 dark:text-stone-400 font-medium text-[11px]">Risk Window:</span>
+            <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg">
               {[3, 5, 7].map((h) => (
                 <button
                   key={h}
                   onClick={() => setRiskHorizon(h)}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
                     riskHorizon === h
-                      ? "bg-white text-stone-900 font-semibold shadow-xs"
-                      : "text-stone-600 hover:text-stone-900"
+                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
                   }`}
                 >
                   {h} Days
@@ -583,7 +585,7 @@ export const WasteManagementPage = () => {
       {activeTab === "logs" && (
         <div className="space-y-4">
           {/* Filters Bar */}
-          <div className="p-3.5 rounded-lg bg-white border border-stone-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
+          <div className="p-3.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
@@ -592,14 +594,14 @@ export const WasteManagementPage = () => {
                   placeholder="Search item, log #, or chef..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 placeholder-stone-400 text-xs w-48 sm:w-64 focus:bg-white focus:outline-none focus:border-stone-400"
+                  className="pl-9 pr-3 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs w-48 sm:w-64 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400"
                 />
               </div>
 
               <select
                 value={reasonFilter}
                 onChange={(e) => setReasonFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 text-xs focus:outline-none focus:border-stone-400"
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs focus:outline-none focus:border-stone-400"
               >
                 <option value="all">All Reasons</option>
                 <option value="Spoilage">Spoilage</option>
@@ -612,7 +614,7 @@ export const WasteManagementPage = () => {
               <select
                 value={itemTypeFilter}
                 onChange={(e) => setItemTypeFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 text-xs focus:outline-none focus:border-stone-400"
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs focus:outline-none focus:border-stone-400"
               >
                 <option value="all">All Item Types</option>
                 <option value="ingredient">Raw Ingredients</option>
@@ -620,17 +622,17 @@ export const WasteManagementPage = () => {
               </select>
             </div>
 
-            <div className="text-right text-stone-500 font-medium text-[11px]">
+            <div className="text-right text-stone-500 dark:text-stone-400 font-medium text-[11px]">
               Showing {(filteredLogs || []).length} of {(wasteLogs || []).length} Records
             </div>
           </div>
 
           {/* Table */}
-          <div className="rounded-lg bg-white border border-stone-200 overflow-hidden">
+          <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase tracking-wider text-[11px] font-semibold">
+                  <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
                     <th className="py-3 px-3">Log #</th>
                     <th className="py-3 px-3">Date & Time</th>
                     <th className="py-3 px-3">Item Name</th>
@@ -644,10 +646,10 @@ export const WasteManagementPage = () => {
                     <th className="py-3 px-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 text-stone-800">
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
                   {(!filteredLogs || filteredLogs.length === 0) ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-stone-400">
+                      <td colSpan={11} className="py-8 text-center text-stone-400 dark:text-stone-500">
                         No food waste records found matching the filters.
                       </td>
                     </tr>
@@ -655,35 +657,35 @@ export const WasteManagementPage = () => {
                     filteredLogs.map((log) => {
                       const badgeColor =
                         log.reason === "Spoilage"
-                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60"
                           : log.reason === "Expiry"
-                          ? "bg-red-50 text-red-700 border-red-200"
+                          ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60"
                           : log.reason === "Overproduction"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-amber-50 text-amber-800 border-amber-200"
+                          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
+                          : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60"
 
                       return (
-                        <tr key={log.id} className="hover:bg-stone-50/50 transition">
-                          <td className="py-3 px-3 font-mono font-medium text-stone-600">
+                        <tr key={log.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
+                          <td className="py-3 px-3 font-mono font-medium text-stone-600 dark:text-stone-400">
                             {log.logNumber}
                           </td>
-                          <td className="py-3 px-3 text-stone-600">
+                          <td className="py-3 px-3 text-stone-600 dark:text-stone-400">
                             <div>{log.date}</div>
-                            <div className="text-[10px] text-stone-400">{log.timestamp}</div>
+                            <div className="text-[10px] text-stone-400 dark:text-stone-500">{log.timestamp}</div>
                           </td>
-                          <td className="py-3 px-3 font-semibold text-stone-900">
+                          <td className="py-3 px-3 font-semibold text-stone-900 dark:text-stone-100">
                             {log.itemName || log.ingredientName}
                           </td>
-                          <td className="py-3 px-3 text-stone-500 capitalize">
+                          <td className="py-3 px-3 text-stone-500 dark:text-stone-400 capitalize">
                             {log.itemType === "prepared_item" ? "Prepared Dish" : "Raw Ingredient"}
                           </td>
-                          <td className="py-3 px-3 font-mono text-stone-500">
+                          <td className="py-3 px-3 font-mono text-stone-500 dark:text-stone-400">
                             {log.batchRef}
                           </td>
                           <td className="py-3 px-3 font-mono font-semibold text-right">
                             {log.quantityLost} {log.unit}
                           </td>
-                          <td className="py-3 px-3 font-mono font-bold text-rose-700 text-right">
+                          <td className="py-3 px-3 font-mono font-bold text-rose-700 dark:text-rose-400 text-right">
                             ₹{log.financialLoss.toLocaleString("en-IN")}
                           </td>
                           <td className="py-3 px-3">
@@ -693,14 +695,14 @@ export const WasteManagementPage = () => {
                               {log.reason}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-stone-600">{log.loggedBy}</td>
-                          <td className="py-3 px-3 text-stone-500 max-w-xs truncate" title={log.notes}>
+                          <td className="py-3 px-3 text-stone-600 dark:text-stone-400">{log.loggedBy}</td>
+                          <td className="py-3 px-3 text-stone-500 dark:text-stone-400 max-w-xs truncate" title={log.notes}>
                             {log.notes || "—"}
                           </td>
                           <td className="py-3 px-3 text-center">
                             <button
                               onClick={() => handleDeleteLog(log.id)}
-                              className="p-1 rounded-md text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              className="p-1 rounded-md text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                               title="Delete record"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -722,24 +724,29 @@ export const WasteManagementPage = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Daily Waste Trends Chart */}
-            <div className="p-5 rounded-lg bg-white border border-stone-200 space-y-3">
+            <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-stone-900">Daily Financial Loss Trend</h3>
-                  <p className="text-[11px] text-stone-500">Daily waste cost in INR over the last 14 days</p>
+                  <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Daily Financial Loss Trend</h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Daily waste cost in INR over the last 14 days</p>
                 </div>
-                <TrendingDown className="w-4 h-4 text-rose-600" />
+                <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               </div>
 
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={dailyTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1efe7" />
-                    <XAxis dataKey="date" stroke="#78716c" fontSize={11} />
-                    <YAxis stroke="#78716c" fontSize={11} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#292524" : "#f1efe7"} />
+                    <XAxis dataKey="date" stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
+                    <YAxis stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
                     <Tooltip
                       formatter={(val) => [`₹${val}`, "Loss"]}
-                      contentStyle={{ backgroundColor: "#ffffff", borderRadius: "8px", border: "1px solid #e7e5e4" }}
+                      contentStyle={{
+                        backgroundColor: isDark ? "#1c1917" : "#ffffff",
+                        borderColor: isDark ? "#292524" : "#e7e5e4",
+                        color: isDark ? "#f5f5f4" : "#1c1917",
+                        borderRadius: "8px"
+                      }}
                     />
                     <Line
                       type="monotone"
@@ -754,13 +761,13 @@ export const WasteManagementPage = () => {
             </div>
 
             {/* Waste by Reason Distribution */}
-            <div className="p-5 rounded-lg bg-white border border-stone-200 space-y-3">
+            <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-stone-900">Loss by Waste Reason</h3>
-                  <p className="text-[11px] text-stone-500">Breakdown of primary root causes</p>
+                  <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Loss by Waste Reason</h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Breakdown of primary root causes</p>
                 </div>
-                <PieChartIcon className="w-4 h-4 text-stone-700" />
+                <PieChartIcon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
               </div>
 
               <div className="h-64 w-full flex items-center justify-center">
@@ -785,7 +792,12 @@ export const WasteManagementPage = () => {
                     </Pie>
                     <Tooltip
                       formatter={(val) => [`₹${val}`, "Cost"]}
-                      contentStyle={{ backgroundColor: "#ffffff", borderRadius: "8px" }}
+                      contentStyle={{
+                        backgroundColor: isDark ? "#1c1917" : "#ffffff",
+                        borderColor: isDark ? "#292524" : "#e7e5e4",
+                        color: isDark ? "#f5f5f4" : "#1c1917",
+                        borderRadius: "8px"
+                      }}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                   </PieChart>
@@ -795,19 +807,24 @@ export const WasteManagementPage = () => {
           </div>
 
           {/* Top Wasted Items Chart */}
-          <div className="p-5 rounded-lg bg-white border border-stone-200 space-y-3">
-            <h3 className="font-bold text-sm text-stone-900">Top Wasted Ingredients & Dishes</h3>
-            <p className="text-[11px] text-stone-500">Highest financial impact items requiring prep adjustments</p>
+          <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Top Wasted Ingredients & Dishes</h3>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400">Highest financial impact items requiring prep adjustments</p>
 
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topItemsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1efe7" />
-                  <XAxis dataKey="name" stroke="#78716c" fontSize={11} />
-                  <YAxis stroke="#78716c" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#292524" : "#f1efe7"} />
+                  <XAxis dataKey="name" stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
+                  <YAxis stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
                   <Tooltip
                     formatter={(val) => [`₹${val}`, "Loss"]}
-                    contentStyle={{ backgroundColor: "#ffffff", borderRadius: "8px" }}
+                    contentStyle={{
+                      backgroundColor: isDark ? "#1c1917" : "#ffffff",
+                      borderColor: isDark ? "#292524" : "#e7e5e4",
+                      color: isDark ? "#f5f5f4" : "#1c1917",
+                      borderRadius: "8px"
+                    }}
                   />
                   <Bar dataKey="loss" fill="#166534" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -821,25 +838,25 @@ export const WasteManagementPage = () => {
       {activeTab === "expiry" && (
         <div className="space-y-6">
           {/* Expired Batches Section */}
-          <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
+          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600" />
+                <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   <span>Expired Batches — Immediate Disposal Required</span>
                 </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                   Food safety policy strictly forbids serving or cooking these items.
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
                 {expiryAlerts?.expiredCount || 0} Batches Expired
               </span>
             </div>
 
             {(expiryAlerts?.expired || []).length === 0 ? (
-              <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-lg border border-stone-200">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+              <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/40 rounded-lg border border-stone-200 dark:border-stone-800">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
                 <span>Zero expired batches detected in active inventory. Excellent rotation!</span>
               </div>
             ) : (
@@ -847,20 +864,20 @@ export const WasteManagementPage = () => {
                 {(expiryAlerts?.expired || []).map((item) => (
                   <div
                     key={item.batchId}
-                    className="p-3.5 rounded-lg bg-stone-50 border border-stone-200 text-xs space-y-2 flex flex-col justify-between"
+                    className="p-3.5 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-xs space-y-2 flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex items-center justify-between font-semibold text-stone-900">
+                      <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
                         <span>{item.ingredientName}</span>
-                        <span className="font-mono text-rose-700">₹{item.financialValue}</span>
+                        <span className="font-mono text-rose-700 dark:text-rose-400">₹{item.financialValue}</span>
                       </div>
-                      <div className="text-[11px] text-stone-500 mt-0.5 font-mono">
+                      <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 font-mono">
                         Batch: {item.batchNumber} • Qty: {item.remainingQuantity} {item.unit}
                       </div>
-                      <div className="text-[11px] text-rose-700 font-medium mt-1">
+                      <div className="text-[11px] text-rose-700 dark:text-rose-400 font-medium mt-1">
                         Expired on: {item.expiryDate} ({Math.abs(item.daysToExpiry)} days ago)
                       </div>
-                      <div className="text-[10px] text-stone-600 mt-1">{item.recommendation}</div>
+                      <div className="text-[10px] text-stone-600 dark:text-stone-400 mt-1">{item.recommendation}</div>
                     </div>
 
                     <button
@@ -883,14 +900,14 @@ export const WasteManagementPage = () => {
           </div>
 
           {/* Critical & Warning Batches (FEFO Priority) */}
-          <div className="p-4 rounded-lg bg-white border border-stone-200 space-y-3">
+          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-sm text-stone-900 flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-stone-700" />
+                <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                   <span>Batches Approaching Expiry — FEFO Priority Queue</span>
                 </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
                   Queue these batches for today's prep or upcycle into Daily Specials before expiration.
                 </p>
               </div>
@@ -906,36 +923,38 @@ export const WasteManagementPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {[...(expiryAlerts?.critical || []), ...(expiryAlerts?.warning || [])].map((item) => {
                 const isCritical = item.status === "critical"
-                const cardBorder = isCritical ? "border-amber-300" : "border-stone-200"
+                const cardBorder = isCritical
+                  ? "border-amber-300 dark:border-amber-700/80"
+                  : "border-stone-200 dark:border-stone-700"
 
                 return (
                   <div
                     key={item.batchId}
-                    className={`p-3.5 rounded-lg bg-white border text-xs space-y-2 flex flex-col justify-between ${cardBorder}`}
+                    className={`p-3.5 rounded-lg bg-white dark:bg-stone-800/80 border text-xs space-y-2 flex flex-col justify-between ${cardBorder}`}
                   >
                     <div>
-                      <div className="flex items-center justify-between font-semibold text-stone-900">
+                      <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
                         <span>{item.ingredientName}</span>
-                        <span className="font-mono text-stone-900 font-bold">₹{item.financialValue}</span>
+                        <span className="font-mono text-stone-900 dark:text-stone-100 font-bold">₹{item.financialValue}</span>
                       </div>
-                      <div className="text-[11px] text-stone-500 mt-0.5 font-mono">
+                      <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 font-mono">
                         Batch: {item.batchNumber} • Qty: {item.remainingQuantity} {item.unit}
                       </div>
                       <div
                         className={`text-[11px] font-medium mt-1 ${
-                          isCritical ? "text-amber-800" : "text-stone-700"
+                          isCritical ? "text-amber-800 dark:text-amber-300" : "text-stone-700 dark:text-stone-300"
                         }`}
                       >
                         Expires in: {item.daysToExpiry} Day{item.daysToExpiry === 1 ? "" : "s"} ({item.expiryDate})
                       </div>
-                      <div className="text-[10px] text-stone-500 mt-1">{item.recommendation}</div>
+                      <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">{item.recommendation}</div>
                     </div>
 
-                    <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                      <span className="text-[10px] text-stone-400">FEFO Active</span>
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between">
+                      <span className="text-[10px] text-stone-400 dark:text-stone-500">FEFO Active</span>
                       <button
                         onClick={() => navigate("/ai-recipes")}
-                        className="text-[11px] font-medium text-stone-700 hover:text-stone-900 flex items-center space-x-1 cursor-pointer"
+                        className="text-[11px] font-medium text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 flex items-center space-x-1 cursor-pointer"
                       >
                         <span>Find Recipes</span>
                         <ArrowRight className="w-3 h-3" />
@@ -953,62 +972,62 @@ export const WasteManagementPage = () => {
       {activeTab === "risk" && (
         <div className="space-y-4">
           {/* Disclaimer Banner */}
-          <div className="p-3.5 rounded-lg bg-stone-50 border border-stone-200 text-stone-700 text-xs flex items-start space-x-2.5">
-            <Info className="w-4 h-4 text-forest-800 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs flex items-start space-x-2.5">
+            <Info className="w-4 h-4 text-forest-800 dark:text-forest-400 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-stone-900">Predictive Modeling Notice: </span>
+              <span className="font-bold text-stone-900 dark:text-stone-100">Predictive Modeling Notice: </span>
               {riskAnalysis?.disclaimer ||
                 "Waste risk categories represent forward-looking predictive estimates based on batch shelf-life and ML demand forecasts. Projected surplus highlights inventory at potential risk and does not claim actual historical food waste reduction."}
             </div>
           </div>
 
           {/* Risk Table */}
-          <div className="rounded-lg bg-white border border-stone-200 overflow-hidden">
+          <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 uppercase tracking-wider text-[11px] font-semibold">
+                  <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
                     <th className="py-3 px-3">Ingredient</th>
                     <th className="py-3 px-3 text-right">Usable Stock</th>
                     <th className="py-3 px-3 text-right">Expiring in {riskHorizon}d</th>
                     <th className="py-3 px-3 text-right">Forecasted Demand</th>
-                    <th className="py-3 px-3 text-right text-stone-900">Projected Surplus</th>
+                    <th className="py-3 px-3 text-right text-stone-900 dark:text-stone-100">Projected Surplus</th>
                     <th className="py-3 px-3 text-right">Value at Risk</th>
                     <th className="py-3 px-3 text-center">Risk Level</th>
                     <th className="py-3 px-3">Transparent Risk Rationale</th>
                     <th className="py-3 px-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 text-stone-800">
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
                   {(riskAnalysis?.data || []).map((item) => {
                     const badge =
                       item.riskLevel === "HIGH"
-                        ? "bg-rose-50 text-rose-700 border-rose-200 font-semibold"
+                        ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 font-semibold"
                         : item.riskLevel === "MEDIUM"
-                        ? "bg-amber-50 text-amber-800 border-amber-200 font-semibold"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200 font-medium"
+                        ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 font-semibold"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 font-medium"
 
                     return (
-                      <tr key={item.ingredientId} className="hover:bg-stone-50/50 transition">
+                      <tr key={item.ingredientId} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
                         <td className="py-3 px-3">
-                          <div className="font-semibold text-stone-900">{item.name}</div>
-                          <div className="text-[10px] text-stone-400 font-mono">
+                          <div className="font-semibold text-stone-900 dark:text-stone-100">{item.name}</div>
+                          <div className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">
                             {item.sku} • {item.category}
                           </div>
                         </td>
                         <td className="py-3 px-3 font-mono font-semibold text-right">
                           {item.usableStock} {item.unit}
                         </td>
-                        <td className="py-3 px-3 font-mono text-amber-800 font-semibold text-right">
+                        <td className="py-3 px-3 font-mono text-amber-800 dark:text-amber-300 font-semibold text-right">
                           {item.expiringWithinHorizon} {item.unit}
                         </td>
-                        <td className="py-3 px-3 font-mono text-stone-600 text-right">
+                        <td className="py-3 px-3 font-mono text-stone-600 dark:text-stone-400 text-right">
                           {item.forecastedDemand} {item.unit}
                         </td>
-                        <td className="py-3 px-3 font-mono font-bold text-stone-900 text-right">
+                        <td className="py-3 px-3 font-mono font-bold text-stone-900 dark:text-stone-100 text-right">
                           {item.projectedSurplus > 0 ? `${item.projectedSurplus} ${item.unit}` : "0.0"}
                         </td>
-                        <td className="py-3 px-3 font-mono font-bold text-stone-900 text-right">
+                        <td className="py-3 px-3 font-mono font-bold text-stone-900 dark:text-stone-100 text-right">
                           ₹{item.surplusValueAtRisk.toLocaleString("en-IN")}
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -1016,7 +1035,7 @@ export const WasteManagementPage = () => {
                             {item.riskLevel}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-stone-600 max-w-sm">
+                        <td className="py-3 px-3 text-stone-600 dark:text-stone-400 max-w-sm">
                           {item.explanation}
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -1029,7 +1048,7 @@ export const WasteManagementPage = () => {
                               <span>Upcycle</span>
                             </button>
                           ) : (
-                            <span className="text-stone-400 text-[10px]">Balanced</span>
+                            <span className="text-stone-400 dark:text-stone-500 text-[10px]">Balanced</span>
                           )}
                         </td>
                       </tr>
@@ -1045,15 +1064,15 @@ export const WasteManagementPage = () => {
       {/* ===================== MODAL: RECORD FOOD WASTE ===================== */}
       {showLogModal && (
         <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full border border-stone-200 shadow-xl p-6 text-stone-800 animate-in fade-in text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-md w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-800 dark:text-stone-200 animate-in fade-in text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
               <div>
-                <h3 className="font-bold text-base text-stone-900">Record Food Waste Event</h3>
-                <p className="text-stone-500 text-xs">Log spoiled, expired, or overproduced food items</p>
+                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Record Food Waste Event</h3>
+                <p className="text-stone-500 dark:text-stone-400 text-xs">Log spoiled, expired, or overproduced food items</p>
               </div>
               <button
                 onClick={() => setShowLogModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 cursor-pointer"
+                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1061,12 +1080,14 @@ export const WasteManagementPage = () => {
 
             <form onSubmit={handleRecordWaste} className="mt-4 space-y-3">
               {/* Type Switcher */}
-              <div className="inline-flex w-full bg-stone-100 p-0.5 rounded-lg">
+              <div className="inline-flex w-full bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setModalItemType("ingredient")}
                   className={`w-1/2 py-1.5 rounded-md font-medium text-xs transition cursor-pointer ${
-                    modalItemType === "ingredient" ? "bg-white text-stone-900 font-semibold shadow-xs" : "text-stone-600"
+                    modalItemType === "ingredient"
+                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                      : "text-stone-600 dark:text-stone-400"
                   }`}
                 >
                   Raw Ingredient
@@ -1075,7 +1096,9 @@ export const WasteManagementPage = () => {
                   type="button"
                   onClick={() => setModalItemType("prepared_item")}
                   className={`w-1/2 py-1.5 rounded-md font-medium text-xs transition cursor-pointer ${
-                    modalItemType === "prepared_item" ? "bg-white text-stone-900 font-semibold shadow-xs" : "text-stone-600"
+                    modalItemType === "prepared_item"
+                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
+                      : "text-stone-600 dark:text-stone-400"
                   }`}
                 >
                   Prepared Dish
@@ -1085,11 +1108,11 @@ export const WasteManagementPage = () => {
               {/* Item Selector */}
               {modalItemType === "ingredient" ? (
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Select Ingredient</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Select Ingredient</label>
                   <select
                     value={selectedIngredientId}
                     onChange={(e) => handleIngredientChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                   >
                     {ingredientsList.map((ing) => (
                       <option key={ing.id} value={ing.id}>
@@ -1100,11 +1123,11 @@ export const WasteManagementPage = () => {
                 </div>
               ) : (
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Select Prepared Dish</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Select Prepared Dish</label>
                   <select
                     value={selectedMenuItemId}
                     onChange={(e) => setSelectedMenuItemId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                   >
                     {menuItemsList.map((dish) => (
                       <option key={dish.id} value={dish.id}>
@@ -1118,7 +1141,7 @@ export const WasteManagementPage = () => {
               {/* Quantity & Unit */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Wasted Quantity</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Wasted Quantity</label>
                   <input
                     type="number"
                     step="0.1"
@@ -1126,16 +1149,16 @@ export const WasteManagementPage = () => {
                     required
                     value={wasteQty}
                     onChange={(e) => setWasteQty(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Unit</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Unit</label>
                   <input
                     type="text"
                     readOnly
                     value={modalItemType === "ingredient" ? wasteUnit : "portions"}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-100 border border-stone-200 text-xs text-stone-600 font-mono"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs text-stone-600 dark:text-stone-400 font-mono"
                   />
                 </div>
               </div>
@@ -1143,11 +1166,11 @@ export const WasteManagementPage = () => {
               {/* Reason & Date */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Reason for Waste</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Reason for Waste</label>
                   <select
                     value={wasteReason}
                     onChange={(e) => setWasteReason(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                   >
                     <option value="Spoilage">Spoilage</option>
                     <option value="Expiry">Expiry</option>
@@ -1158,55 +1181,55 @@ export const WasteManagementPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">Incident Date</label>
+                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Incident Date</label>
                   <input
                     type="date"
                     required
                     value={wasteDate}
                     onChange={(e) => setWasteDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                   />
                 </div>
               </div>
 
               {/* Logged By */}
               <div>
-                <label className="block font-medium text-stone-700 mb-1">Logged By</label>
+                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Logged By</label>
                 <input
                   type="text"
                   required
                   value={loggedBy}
                   onChange={(e) => setLoggedBy(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                 />
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block font-medium text-stone-700 mb-1">Incident Notes & Observations</label>
+                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Incident Notes & Observations</label>
                 <textarea
                   rows={2}
                   value={wasteNotes}
                   onChange={(e) => setWasteNotes(e.target.value)}
                   placeholder="Root cause notes: temperature spike, buffet leftover, peeling trim..."
-                  className="w-full px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-stone-900 focus:bg-white focus:outline-none focus:border-stone-400 text-xs"
+                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
                 />
               </div>
 
               {/* Estimated Financial Loss Display */}
-              <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between">
-                <span className="text-stone-600 font-medium">Estimated Financial Loss:</span>
-                <span className="font-bold text-base text-rose-700 font-mono">
+              <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
+                <span className="text-stone-600 dark:text-stone-300 font-medium">Estimated Financial Loss:</span>
+                <span className="font-bold text-base text-rose-700 dark:text-rose-400 font-mono">
                   ₹{calculateEstimatedLoss().toLocaleString("en-IN")}
                 </span>
               </div>
 
               {/* Submit / Cancel */}
-              <div className="pt-2 flex justify-end space-x-2 border-t border-stone-200">
+              <div className="pt-2 flex justify-end space-x-2 border-t border-stone-200 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowLogModal(false)}
-                  className="px-3.5 py-2 rounded-lg bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 font-medium text-xs cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium text-xs cursor-pointer"
                 >
                   Cancel
                 </button>

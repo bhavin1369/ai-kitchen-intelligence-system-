@@ -29,51 +29,51 @@ export const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4 font-sans text-stone-800">
-      <div className="w-full max-w-sm bg-white border border-stone-200 p-6 sm:p-8 rounded-lg shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950 p-4 font-sans text-stone-800 dark:text-stone-200">
+      <div className="w-full max-w-sm bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 sm:p-8 rounded-lg shadow-xl">
         <div className="text-center mb-6">
           <div className="inline-flex w-12 h-12 rounded-lg bg-forest-900 items-center justify-center mb-3 shadow-xs">
             <ChefHat className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-stone-900 tracking-tight">SpiceCraft Kitchen</h1>
-          <p className="text-xs text-stone-500 mt-0.5">AI-Powered Kitchen Intelligence System</p>
+          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">SpiceCraft Kitchen</h1>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">AI-Powered Kitchen Intelligence System</p>
         </div>
 
-        <div className="mb-5 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2">
-          <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
+        <div className="mb-5 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center space-x-2">
+          <Sparkles className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
           <span>Standalone Mode Active — One-click role presets enabled</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-[11px] font-medium text-stone-600 mb-1 uppercase tracking-wider">
+            <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1 uppercase tracking-wider">
               Username / Staff ID
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+              <User className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-2.5" />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-xs text-stone-900 placeholder-stone-400 focus:bg-white focus:border-stone-400 focus:outline-hidden transition"
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:bg-white dark:focus:bg-stone-800 focus:border-stone-400 dark:focus:border-stone-500 focus:outline-none transition"
                 placeholder="Enter username"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-stone-600 mb-1 uppercase tracking-wider">
+            <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1 uppercase tracking-wider">
               Security PIN / Password
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+              <Lock className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-2.5" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-stone-50 border border-stone-200 text-xs text-stone-900 placeholder-stone-400 focus:bg-white focus:border-stone-400 focus:outline-hidden transition"
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:bg-white dark:focus:bg-stone-800 focus:border-stone-400 dark:focus:border-stone-500 focus:outline-none transition"
                 placeholder="Enter password"
               />
             </div>
@@ -95,32 +95,32 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-stone-100">
-          <p className="text-[11px] text-stone-500 font-medium mb-2.5 text-center">Quick Demo Presets</p>
+        <div className="mt-6 pt-5 border-t border-stone-100 dark:border-stone-800">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 font-medium mb-2.5 text-center">Quick Demo Presets</p>
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setPreset("chef_vikram", "chef123")}
-              className="p-2 text-center rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 transition text-[11px] font-medium text-stone-700 cursor-pointer"
+              className="p-2 text-center rounded-lg bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition text-[11px] font-medium text-stone-700 dark:text-stone-300 cursor-pointer"
             >
-              <div className="font-semibold text-stone-900">Head Chef</div>
-              <div className="text-[10px] text-stone-500">Vikram S.</div>
+              <div className="font-semibold text-stone-900 dark:text-stone-100">Head Chef</div>
+              <div className="text-[10px] text-stone-500 dark:text-stone-400">Vikram S.</div>
             </button>
             <button
               type="button"
               onClick={() => setPreset("manager_ananya", "mgr123")}
-              className="p-2 text-center rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 transition text-[11px] font-medium text-stone-700 cursor-pointer"
+              className="p-2 text-center rounded-lg bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition text-[11px] font-medium text-stone-700 dark:text-stone-300 cursor-pointer"
             >
-              <div className="font-semibold text-stone-900">Manager</div>
-              <div className="text-[10px] text-stone-500">Ananya I.</div>
+              <div className="font-semibold text-stone-900 dark:text-stone-100">Manager</div>
+              <div className="text-[10px] text-stone-500 dark:text-stone-400">Ananya I.</div>
             </button>
             <button
               type="button"
               onClick={() => setPreset("admin_aditya", "admin123")}
-              className="p-2 text-center rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 transition text-[11px] font-medium text-stone-700 cursor-pointer"
+              className="p-2 text-center rounded-lg bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition text-[11px] font-medium text-stone-700 dark:text-stone-300 cursor-pointer"
             >
-              <div className="font-semibold text-stone-900">Admin</div>
-              <div className="text-[10px] text-stone-500">Operations</div>
+              <div className="font-semibold text-stone-900 dark:text-stone-100">Admin</div>
+              <div className="text-[10px] text-stone-500 dark:text-stone-400">Operations</div>
             </button>
           </div>
         </div>
