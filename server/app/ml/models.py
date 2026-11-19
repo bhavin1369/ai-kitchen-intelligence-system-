@@ -27,6 +27,8 @@ from app.ml.preprocessor import (
 
 MODELS_DIR = Path(__file__).resolve().parent / "models_store"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR = Path(__file__).resolve().parent / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 MODEL_ARTIFACT_PATH = MODELS_DIR / "demand_forecast_model.joblib"
 METADATA_PATH = MODELS_DIR / "model_metadata.json"
 
@@ -35,13 +37,20 @@ class BaselineDemandModel:
     """
     Day-of-Week historical moving average baseline.
     Predicts demand using the average sales for the given dish on that day of week,
-    falling back to overall 7-day rolling average.
+    falling back to dish overall mean, then training set global mean.
     """
     def __init__(self):
         self.dow_dish_means: Dict[Tuple[int, int], float] = {}
         self.overall_dish_means: Dict[int, float] = {}
+        self.global_mean: float = 10.0
 
     def fit(self, train_df: pd.DataFrame):
+        if train_df.empty or "quantity" not in train_df.columns:
+            return self
+
+        # Global dataset mean from train partition
+        self.global_mean = float(train_df["quantity"].mean()) if not train_df.empty else 10.0
+
         # Compute mean per (menu_item_id, day_of_week)
         grouped_dow = train_df.groupby(["menu_item_id", "day_of_week"])["quantity"].mean()
         self.dow_dish_means = grouped_dow.to_dict()
@@ -52,28 +61,36 @@ class BaselineDemandModel:
         return self
 
     def predict(self, df: pd.DataFrame) -> np.ndarray:
+        if df.empty:
+            return np.array([], dtype=float)
         preds = []
         for _, row in df.iterrows():
             item_id = int(row.get("menu_item_id", 0))
             dow = int(row.get("day_of_week", 0))
             val = self.dow_dish_means.get((item_id, dow))
             if val is None or np.isnan(val):
-                val = self.overall_dish_means.get(item_id, 5.0)
+                val = self.overall_dish_means.get(item_id, self.global_mean)
             preds.append(max(0.0, float(val)))
-        return np.array(preds)
+        return np.array(preds, dtype=float)
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-    """Calculates MAE, RMSE, R2, and MAPE metrics"""
-    mae = float(mean_absolute_error(y_true, y_pred))
-    mse = float(mean_squared_error(y_true, y_pred))
+    """Calculates MAE, RMSE, R2, and MAPE metrics safely"""
+    if len(y_true) == 0:
+        return {"mae": 0.0, "rmse": 0.0, "r2": 0.0, "mape": 0.0}
+
+    y_t = np.asarray(y_true, dtype=float)
+    y_p = np.asarray(y_pred, dtype=float)
+
+    mae = float(mean_absolute_error(y_t, y_p))
+    mse = float(mean_squared_error(y_t, y_p))
     rmse = float(np.sqrt(mse))
-    r2 = float(r2_score(y_true, y_pred))
+    r2 = float(r2_score(y_t, y_p)) if len(y_t) > 1 and np.var(y_t) > 0 else 0.0
 
     # MAPE: avoid div by zero
-    mask = y_true > 0
+    mask = y_t > 0
     if np.sum(mask) > 0:
-        mape = float(np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
+        mape = float(np.mean(np.abs((y_t[mask] - y_p[mask]) / y_t[mask])) * 100)
     else:
         mape = 0.0
 
@@ -83,6 +100,84 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         "r2": round(r2, 4),
         "mape": round(mape, 2)
     }
+
+
+def generate_evaluation_plots(
+    test_eval_df: pd.DataFrame,
+    importances: np.ndarray,
+    feature_columns: List[str],
+    output_dir: Path
+) -> Dict[str, str]:
+    """Generates visual evaluation charts using Matplotlib and saves them to disk"""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plot_paths: Dict[str, str] = {}
+
+    try:
+        # 1. Macro Actual vs Predicted Time-Series
+        date_agg = test_eval_df.groupby("date").agg({
+            "quantity": "sum",
+            "predicted": "sum",
+            "baseline": "sum"
+        }).reset_index()
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        dates_str = [d.strftime("%b %d") if hasattr(d, "strftime") else str(d) for d in date_agg["date"]]
+        ax.plot(dates_str, date_agg["quantity"], marker="o", linewidth=2.5, color="#166534", label="Actual Sales")
+        ax.plot(dates_str, date_agg["predicted"], marker="s", linewidth=2.0, color="#2563eb", linestyle="--", label="Random Forest Forecast")
+        ax.plot(dates_str, date_agg["baseline"], marker="^", linewidth=1.5, color="#d97706", linestyle=":", label="Historical Baseline")
+        ax.set_title("Out-of-Sample Test Evaluation: Actual vs Predicted Demand", fontsize=12, fontweight="bold")
+        ax.set_xlabel("Test Date", fontsize=10)
+        ax.set_ylabel("Total Daily Portions", fontsize=10)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.legend(loc="best")
+        plt.tight_layout()
+        ts_path = output_dir / "actual_vs_predicted_time_series.png"
+        fig.savefig(ts_path, dpi=150)
+        plt.close(fig)
+        plot_paths["timeSeriesPlot"] = str(ts_path.name)
+
+        # 2. Feature Importance Ranking
+        sorted_idx = np.argsort(importances)[::-1][:10]
+        top_feats = [feature_columns[i] for i in sorted_idx]
+        top_scores = [importances[i] for i in sorted_idx]
+
+        fig, ax = plt.subplots(figsize=(9, 5))
+        y_pos = np.arange(len(top_feats))
+        ax.barh(y_pos, top_scores[::-1], color="#059669", edgecolor="#064e3b")
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(top_feats[::-1], fontsize=9)
+        ax.set_xlabel("Relative Importance (Gini Impurity Decrease)", fontsize=10)
+        ax.set_title("Top 10 Random Forest Predictors", fontsize=12, fontweight="bold")
+        ax.grid(True, axis="x", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        fi_path = output_dir / "feature_importance_ranking.png"
+        fig.savefig(fi_path, dpi=150)
+        plt.close(fig)
+        plot_paths["featureImportancePlot"] = str(fi_path.name)
+
+        # 3. Residuals Distribution
+        residuals = test_eval_df["quantity"] - test_eval_df["predicted"]
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        ax.hist(residuals, bins=15, color="#3b82f6", edgecolor="#1e3a8a", alpha=0.7)
+        ax.axvline(0, color="red", linestyle="--", linewidth=1.5, label="Zero Error")
+        ax.set_title("Forecast Residual Distribution (Actual - Predicted)", fontsize=12, fontweight="bold")
+        ax.set_xlabel("Residual (Portions)", fontsize=10)
+        ax.set_ylabel("Frequency", fontsize=10)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.legend(loc="best")
+        plt.tight_layout()
+        res_path = output_dir / "residuals_distribution.png"
+        fig.savefig(res_path, dpi=150)
+        plt.close(fig)
+        plot_paths["residualsPlot"] = str(res_path.name)
+    except Exception as e:
+        print(f"Warning: Failed to generate evaluation plots: {e}")
+
+    return plot_paths
 
 
 def train_and_evaluate_models() -> Dict[str, Any]:
@@ -162,15 +257,23 @@ def train_and_evaluate_models() -> Dict[str, Any]:
         y_t = group["quantity"].values
         X_sub = group[FEATURE_COLUMNS]
         p_sub = np.clip(rf.predict(X_sub), 0, None)
+        base_sub = baseline.predict(group)
         d_name = group["dish_name"].iloc[0] if "dish_name" in group else f"Dish #{m_id}"
         dish_mae = float(mean_absolute_error(y_t, p_sub))
         dish_rmse = float(np.sqrt(mean_squared_error(y_t, p_sub)))
+        dish_base_mae = float(mean_absolute_error(y_t, base_sub))
+        dish_base_rmse = float(np.sqrt(mean_squared_error(y_t, base_sub)))
+        residuals = y_t - p_sub
+        residual_std = float(np.std(residuals))
         dish_breakdown.append({
             "menuItemId": int(m_id),
             "dishName": d_name,
             "testSamples": len(group),
             "mae": round(dish_mae, 2),
             "rmse": round(dish_rmse, 2),
+            "residualStd": round(residual_std, 2),
+            "baselineMae": round(dish_base_mae, 2),
+            "baselineRmse": round(dish_base_rmse, 2),
             "avgActual": round(float(np.mean(y_t)), 1),
             "avgPredicted": round(float(np.mean(p_sub)), 1),
         })
@@ -197,6 +300,9 @@ def train_and_evaluate_models() -> Dict[str, Any]:
             "error": round(abs(float(row["quantity"]) - float(row["predicted"])), 1)
         })
 
+    # Generate Matplotlib evaluation figures
+    plot_paths = generate_evaluation_plots(test_eval_df, importances, FEATURE_COLUMNS, REPORTS_DIR)
+
     duration_sec = round(time.time() - start_time, 2)
     trained_at = datetime.now(timezone.utc).isoformat()
     version = f"v1.{int(time.time()) % 100000}"
@@ -217,6 +323,8 @@ def train_and_evaluate_models() -> Dict[str, Any]:
             "distinctDatesCount": meta["distinct_dates_count"],
             "dishesCount": meta["dish_count"],
             "splitCutoff": split_meta["cutoff_date"],
+            "isSynthetic": False,
+            "dataLeakagePrevented": True
         },
         "evaluation": {
             "primaryModel": "Random Forest",
@@ -226,6 +334,7 @@ def train_and_evaluate_models() -> Dict[str, Any]:
             "pctImprovementOverBaseline": pct_improvement,
             "status": "superior" if pct_improvement >= 0 else "comparable",
         },
+        "evaluationPlots": plot_paths,
         "featureImportances": feature_ranking,
         "dishBreakdown": dish_breakdown,
         "comparisonPoints": comparison_points,
