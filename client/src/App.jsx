@@ -2,6 +2,7 @@ import React from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
+import { ToastProvider } from "./context/ToastContext"
 import { Layout } from "./components/layout/Layout"
 
 // 11 Core Pages
@@ -91,8 +92,9 @@ export function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <BrowserRouter>
-          <Routes>
+          <ToastProvider>
+            <BrowserRouter>
+              <Routes>
             <Route path="/login" element={<LoginPage />} />
 
             <Route
@@ -151,6 +153,7 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+    </ToastProvider>
     </AuthProvider>
     </ThemeProvider>
     </ErrorBoundary>

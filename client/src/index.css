@@ -5,17 +5,18 @@
 @layer base {
   html {
     transition: background-color 0.15s ease, color 0.15s ease;
+    font-size: 16px; /* High legibility baseline */
   }
   
   body {
-    @apply bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 antialiased font-sans min-h-screen selection:bg-emerald-100 dark:selection:bg-emerald-950 selection:text-emerald-900 dark:selection:text-emerald-200;
+    @apply bg-paper dark:bg-chalkboard text-charcoal dark:text-chalk antialiased font-sans min-h-screen selection:bg-chilli/10 dark:selection:bg-chilli/30 selection:text-chilli;
   }
 
   html.dark {
     color-scheme: dark;
   }
 
-  /* Form control defaults for accessibility and consistency */
+  /* Form control defaults for accessibility, consistency and greasy-finger touch friendliness */
   input[type="text"],
   input[type="number"],
   input[type="date"],
@@ -24,7 +25,7 @@
   input[type="search"],
   select,
   textarea {
-    @apply transition-colors duration-150;
+    @apply text-base transition-colors duration-150 bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal dark:text-chalk rounded-lg;
   }
 
   /* Accessible focus rings */
@@ -32,11 +33,55 @@
   select:focus-visible,
   textarea:focus-visible,
   button:focus-visible {
-    @apply outline-none ring-2 ring-emerald-600/50 dark:ring-emerald-400/50 ring-offset-1 ring-offset-white dark:ring-offset-stone-900;
+    @apply outline-none ring-2 ring-chilli/60 dark:ring-chilli/70 ring-offset-2 ring-offset-paper dark:ring-offset-chalkboard;
   }
 }
 
-/* Custom premium scrollbar */
+/* Respect user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* "The Pass" Perforated Ticket styling */
+.ticket-perforated {
+  position: relative;
+}
+
+.ticket-perforated::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background-image: radial-gradient(circle, #FAF6EE 2px, transparent 2.5px);
+  background-size: 10px 10px;
+  background-position: top center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.dark .ticket-perforated::before {
+  background-image: radial-gradient(circle, #161513 2px, transparent 2.5px);
+}
+
+/* Subtle jagged paper edge border */
+.ticket-edge {
+  border-top: 2px dashed #E4DCCE;
+}
+
+.dark .ticket-edge {
+  border-top: 2px dashed #2F2D28;
+}
+
+/* Kitchen Pass Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -45,22 +90,22 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
+  background: #D9D2C5;
   border-radius: 9999px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #44403c;
+  background: #3A3731;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
+  background: #BDB5A6;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #57534e;
+  background: #4E4B43;
 }
 
 /* Print styling */
 @media print {
-  aside, header {
+  header, nav, .no-print {
     display: none !important;
   }
   main {

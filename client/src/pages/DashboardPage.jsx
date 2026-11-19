@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import {
-  TrendingUp,
-  Receipt,
-  Boxes,
-  AlertTriangle,
-  ShoppingCart,
-  Plus,
-  RefreshCw,
   Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
+  Calendar,
   Clock,
+  AlertTriangle,
+  Boxes,
+  Receipt,
+  Trash2,
   ChevronRight,
-  PackageCheck,
+  ChevronDown,
   CheckCircle2,
-  X,
-  AlertCircle,
-  FileSpreadsheet,
-  Layers,
-  UtensilsCrossed
+  CheckSquare,
+  Square,
+  TrendingUp,
+  RefreshCw,
+  ChefHat,
+  ArrowRight,
+  Flame,
+  Plus,
+  ShieldAlert,
+  Utensils
 } from "lucide-react"
-import { Link } from "react-router-dom"
 import {
   ResponsiveContainer,
   AreaChart,
@@ -29,135 +30,192 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend
+  Tooltip
 } from "recharts"
 
+import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
-import {
-  dashboardSummary as fallbackSummary,
-  hourlySalesTrend as fallbackHourly,
-  demandComparison as fallbackDemand,
-  recentActivities as fallbackActivities,
-  inventoryItems as fallbackInventory,
-  inventoryBatches as fallbackBatches,
-  menuCatalog as fallbackMenu
-} from "../data/mockData"
+import { useToast } from "../context/ToastContext"
+import { Ticket } from "../components/ui/Ticket"
+import { StatNumber } from "../components/ui/StatNumber"
+import { BigButton } from "../components/ui/BigButton"
+import { ProgressRing } from "../components/ui/ProgressRing"
+import { Stepper } from "../components/ui/Stepper"
+import { BottomSheet } from "../components/ui/BottomSheet"
+import { FilterChip } from "../components/ui/FilterChip"
+
 import {
   reportsService,
   salesService,
   menuService,
   inventoryService,
   forecastService,
-  wasteService
+  wasteService,
+  actionPlanService
 } from "../services/api"
 
-export const DashboardPage = () => {
-  const { isDark } = useTheme()
+import {
+  dashboardSummary as fallbackSummary,
+  hourlySalesTrend as fallbackHourly,
+  demandComparison as fallbackDemand,
+  inventoryItems as fallbackInventory,
+  inventoryBatches as fallbackBatches,
+  menuCatalog as fallbackMenu
+} from "../data/mockData"
 
-  // Live data states
+export const DashboardPage = () => {
+  const { user } = useAuth()
+  const { isDark } = useTheme()
+  const toast = useToast()
+  const navigate = useNavigate()
+
+  // State
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+
+  // Data
   const [stats, setStats] = useState(fallbackSummary)
   const [hourlySales, setHourlySales] = useState(fallbackHourly)
   const [demandComp, setDemandComp] = useState(fallbackDemand)
-  const [activities, setActivities] = useState(fallbackActivities)
   const [lowStockItems, setLowStockItems] = useState([])
   const [nearExpiryList, setNearExpiryList] = useState([])
   const [menuItems, setMenuItems] = useState([])
-  const [ingredients, setIngredients] = useState([])
 
-  const [salesTrendView, setSalesTrendView] = useState("hourly") // "hourly" | "daily"
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [actionSuccess, setActionSuccess] = useState("")
-  const [actionError, setActionError] = useState("")
+  // Daily Action Plan / Today's Prep Tasks
+  const [selectedStation, setSelectedStation] = useState("all")
+  const [prepTasks, setPrepTasks] = useState([
+    {
+      taskId: "task-1",
+      station: "Curry Station",
+      dishName: "Makhani Gravy Base",
+      portions: 45,
+      unit: "litres",
+      assignedTo: "Chef Vikram",
+      completed: true,
+      timeEst: "40 min",
+    },
+    {
+      taskId: "task-2",
+      station: "Curry Station",
+      dishName: "Onion-Tomato Masala",
+      portions: 30,
+      unit: "kg",
+      assignedTo: "Chef Vikram",
+      completed: true,
+      timeEst: "35 min",
+    },
+    {
+      taskId: "task-3",
+      station: "Tandoor & Grill",
+      dishName: "Paneer Tikka Marinade",
+      portions: 60,
+      unit: "skewers",
+      assignedTo: "Chef Ramesh",
+      completed: false,
+      timeEst: "25 min",
+    },
+    {
+      taskId: "task-4",
+      station: "Tandoor & Grill",
+      dishName: "Tandoori Roti Dough Batch",
+      portions: 120,
+      unit: "portions",
+      assignedTo: "Chef Ramesh",
+      completed: false,
+      timeEst: "30 min",
+    },
+    {
+      taskId: "task-5",
+      station: "Cold Prep & Veg",
+      dishName: "Sliced Red Onions & Herbs",
+      portions: 25,
+      unit: "kg",
+      assignedTo: "Kitchen Commis",
+      completed: true,
+      timeEst: "20 min",
+    },
+    {
+      taskId: "task-6",
+      station: "Cold Prep & Veg",
+      dishName: "Mint & Coriander Chutney",
+      portions: 8,
+      unit: "litres",
+      assignedTo: "Kitchen Commis",
+      completed: false,
+      timeEst: "15 min",
+    },
+    {
+      taskId: "task-7",
+      station: "Rice & Biryani",
+      dishName: "Dum Biryani Basmati Parboil",
+      portions: 75,
+      unit: "portions",
+      assignedTo: "Senior Chef",
+      completed: false,
+      timeEst: "45 min",
+    },
+  ])
 
-  // Quick Action Modals
-  const [activeModal, setActiveModal] = useState(null) // "sale" | "menu" | "inventory" | "forecast" | null
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Modals
+  const [quickSaleOpen, setQuickSaleOpen] = useState(false)
+  const [quickWasteOpen, setQuickWasteOpen] = useState(false)
+  const [selectedDishForSale, setSelectedDishForSale] = useState(null)
+  const [salePortions, setSalePortions] = useState(1)
+  const [wasteItemName, setWasteItemName] = useState("")
+  const [wasteQty, setWasteQty] = useState(1)
+  const [wasteReason, setWasteReason] = useState("Spoilage")
 
-  // Modal Forms
-  const [saleForm, setSaleForm] = useState({
-    menuItemId: "",
-    quantity: 1,
-    channel: "Dine-in",
-    tableNumber: "Table 1",
-    customerName: "Walk-in Guest",
-    paymentMethod: "UPI"
-  })
-  const [menuForm, setMenuForm] = useState({
-    name: "",
-    category: "Mains",
-    price: "",
-    costPrice: "",
-    prepTimeMinutes: 15,
-    isVeg: true,
-    description: ""
-  })
-  const [inventoryForm, setInventoryForm] = useState({
-    ingredientId: "",
-    actionType: "adjust", // "adjust" | "waste"
-    quantity: "",
-    newStock: "",
-    reason: "Kitchen Mise-en-place audit"
-  })
-
-  // Load live statistics from backend
-  const loadDashboardData = async (silent = false) => {
+  // Load Dashboard + Plan data
+  const loadPassData = async (silent = false) => {
     if (!silent) setLoading(true)
     else setRefreshing(true)
-    setActionError("")
 
     try {
-      const [dashRes, ingRes, batchRes, menuRes] = await Promise.allSettled([
+      const todayStr = new Date().toISOString().split("T")[0]
+
+      const [dashRes, ingRes, batchRes, menuRes, planRes] = await Promise.allSettled([
         reportsService.getDashboard(),
         inventoryService.getIngredients({ limit: 100 }),
         inventoryService.getBatches({ status: "active", limit: 50 }),
-        menuService.getAll()
+        menuService.getAll(),
+        actionPlanService.getPlan({ date: todayStr }),
       ])
 
-      // 1. Process dashboard stats
       if (dashRes.status === "fulfilled" && dashRes.value.data?.success) {
         const d = dashRes.value.data.data || {}
         setStats((prev) => ({ ...prev, ...d }))
         if (d.hourlySalesTrend?.length) setHourlySales(d.hourlySalesTrend)
         if (d.demandComparison?.length) setDemandComp(d.demandComparison)
-        if (d.recentActivities?.length) setActivities(d.recentActivities)
       }
 
-      // 2. Process ingredients & low stock
       if (ingRes.status === "fulfilled" && ingRes.value.data?.success) {
         const allIngs = ingRes.value.data.data || []
-        setIngredients(allIngs)
         const low = allIngs.filter(
           (i) => i.currentStock <= i.reorderPoint || (i.status && i.status.toLowerCase().includes("low"))
-        ).slice(0, 5)
-        setLowStockItems(low.length ? low : fallbackInventory.slice(0, 4))
-      } else {
-        setLowStockItems(fallbackInventory.slice(0, 4))
+        ).slice(0, 3)
+        setLowStockItems(low.length ? low : fallbackInventory.slice(0, 2))
       }
 
-      // 3. Process batches & near expiry
       if (batchRes.status === "fulfilled" && batchRes.value.data?.success) {
         const allBatches = batchRes.value.data.data || []
-        const near = allBatches.filter((b) => b.urgency === "critical" || b.daysLeft <= 3).slice(0, 5)
-        setNearExpiryList(near.length ? near : fallbackBatches.slice(0, 4))
-      } else {
-        setNearExpiryList(fallbackBatches.slice(0, 4))
+        const near = allBatches.filter((b) => b.urgency === "critical" || b.daysLeft <= 2).slice(0, 3)
+        setNearExpiryList(near.length ? near : fallbackBatches.slice(0, 2))
       }
 
-      // 4. Process menu items
       if (menuRes.status === "fulfilled" && menuRes.value.data?.success) {
         const items = menuRes.value.data.data || []
         setMenuItems(items.length ? items : fallbackMenu)
-        if (items.length && !saleForm.menuItemId) {
-          setSaleForm((prev) => ({ ...prev, menuItemId: String(items[0].id) }))
+        if (items.length && !selectedDishForSale) {
+          setSelectedDishForSale(items[0])
         }
-      } else {
-        setMenuItems(fallbackMenu)
+      }
+
+      if (planRes.status === "fulfilled" && planRes.value.data?.data?.prepTasks?.length) {
+        setPrepTasks(planRes.value.data.data.prepTasks)
       }
     } catch (err) {
-      console.error("Dashboard data load error:", err)
+      console.error("Pass data load error:", err)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -165,1055 +223,642 @@ export const DashboardPage = () => {
   }
 
   useEffect(() => {
-    loadDashboardData()
+    loadPassData()
   }, [])
 
-  // Auto-dismiss notifications
-  useEffect(() => {
-    if (actionSuccess) {
-      const t = setTimeout(() => setActionSuccess(""), 4000)
-      return () => clearTimeout(t)
-    }
-  }, [actionSuccess])
-
-  useEffect(() => {
-    if (actionError) {
-      const t = setTimeout(() => setActionError(""), 5000)
-      return () => clearTimeout(t)
-    }
-  }, [actionError])
-
-  // Handlers for Quick Actions
-  const handleAddSale = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setActionError("")
-
-    try {
-      const mId = parseInt(saleForm.menuItemId, 10)
-      const qty = parseInt(saleForm.quantity, 10) || 1
-      const payload = {
-        channel: saleForm.channel,
-        tableNumber: saleForm.channel === "Dine-in" ? saleForm.tableNumber : "",
-        customerName: saleForm.customerName || "Walk-in Guest",
-        paymentMethod: saleForm.paymentMethod,
-        items: [{ menuItemId: mId, quantity: qty }]
-      }
-
-      const res = await salesService.create(payload)
-      if (res.data?.success) {
-        setActionSuccess(`Order ${res.data.data?.orderNumber || ""} recorded! Inventory deducted via FEFO.`)
-      } else {
-        setActionSuccess("Sale order recorded successfully.")
-      }
-      setActiveModal(null)
-      loadDashboardData(true)
-    } catch (err) {
-      console.error("Sale error:", err)
-      setActionError(err.response?.data?.message || "Failed to record sale. Insufficient stock or server offline.")
-    } finally {
-      setIsSubmitting(false)
-    }
+  // Greeting helper
+  const getGreeting = () => {
+    const hr = new Date().getHours()
+    if (hr < 12) return "Good morning"
+    if (hr < 16) return "Good afternoon"
+    return "Good evening"
   }
 
-  const handleAddMenuItem = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setActionError("")
+  const todayFormatted = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date())
 
-    try {
-      const payload = {
-        name: menuForm.name,
-        category: menuForm.category,
-        price: parseFloat(menuForm.price),
-        costPrice: parseFloat(menuForm.costPrice) || parseFloat(menuForm.price) * 0.35,
-        prepTimeMinutes: parseInt(menuForm.prepTimeMinutes, 10) || 15,
-        isVeg: Boolean(menuForm.isVeg),
-        description: menuForm.description
-      }
-
-      const res = await menuService.create(payload)
-      setActionSuccess(`Menu item "${menuForm.name}" created and added to POS catalog!`)
-      setActiveModal(null)
-      setMenuForm({
-        name: "",
-        category: "Mains",
-        price: "",
-        costPrice: "",
-        prepTimeMinutes: 15,
-        isVeg: true,
-        description: ""
+  // Toggle prep task
+  const toggleTask = (taskId) => {
+    setPrepTasks((prev) =>
+      prev.map((t) => {
+        if (t.taskId === taskId) {
+          const next = !t.completed
+          if (next) {
+            toast.undo(`Marked "${t.dishName || t.taskName}" as prep complete`, () => {
+              setPrepTasks((current) =>
+                current.map((curr) => (curr.taskId === taskId ? { ...curr, completed: false } : curr))
+              )
+            })
+          }
+          return { ...t, completed: next }
+        }
+        return t
       })
-      loadDashboardData(true)
-    } catch (err) {
-      console.error("Menu create error:", err)
-      setActionError(err.response?.data?.message || "Failed to add menu item.")
-    } finally {
-      setIsSubmitting(false)
-    }
+    )
   }
 
-  const handleUpdateInventory = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setActionError("")
+  // Prep stats
+  const completedCount = prepTasks.filter((t) => t.completed).length
+  const totalCount = prepTasks.length
 
+  const stations = ["all", ...new Set(prepTasks.map((t) => t.station || "General Prep"))]
+
+  const filteredTasks = prepTasks.filter((t) => {
+    if (selectedStation === "all") return true
+    return (t.station || "General Prep") === selectedStation
+  })
+
+  // Quick Sale submission
+  const handleRecordSale = async () => {
+    if (!selectedDishForSale) return
     try {
-      const ingId = parseInt(inventoryForm.ingredientId, 10)
-      if (inventoryForm.actionType === "waste") {
-        await wasteService.recordWaste({
-          ingredientId: ingId,
-          quantity: parseFloat(inventoryForm.quantity),
-          unit: "kg",
-          reason: inventoryForm.reason || "Preparation Waste",
-          notes: "Logged from Dashboard Quick Actions"
-        })
-        setActionSuccess("Food waste recorded and stock decremented.")
-      } else {
-        await inventoryService.adjustStock({
-          ingredientId: ingId,
-          newStock: parseFloat(inventoryForm.newStock),
-          notes: inventoryForm.reason || "Physical count audit"
-        })
-        setActionSuccess("Inventory stock level adjusted successfully.")
-      }
-      setActiveModal(null)
-      loadDashboardData(true)
+      await salesService.create({
+        menuItemId: selectedDishForSale.id,
+        quantity: salePortions,
+        channel: "Dine-in",
+        tableNumber: "Pass Quick Sale",
+        customerName: "Walk-in Guest",
+        paymentMethod: "UPI",
+        totalAmount: (selectedDishForSale.price || 250) * salePortions,
+      })
+      toast.success(`Logged sale: ${salePortions}x ${selectedDishForSale.name}`)
+      setQuickSaleOpen(false)
+      setSalePortions(1)
+      loadPassData(true)
     } catch (err) {
-      console.error("Inventory update error:", err)
-      setActionError(err.response?.data?.message || "Failed to update inventory.")
-    } finally {
-      setIsSubmitting(false)
+      console.error("Quick sale failed:", err)
+      toast.error("Could not record sale. Please try again.")
     }
   }
 
-  const handleGenerateForecast = async () => {
-    setIsSubmitting(true)
-    setActionError("")
-
+  // Quick Waste submission
+  const handleRecordWaste = async () => {
+    if (!wasteItemName) return
     try {
-      await forecastService.retrainModel()
-      setActionSuccess("AI Demand Models retrained and forecasts updated!")
-      setActiveModal(null)
-      loadDashboardData(true)
+      await wasteService.recordWaste({
+        ingredientName: wasteItemName,
+        quantity: wasteQty,
+        unit: "kg",
+        reason: wasteReason,
+        costEstimate: wasteQty * 85,
+      })
+      toast.success(`Recorded waste: ${wasteQty}kg ${wasteItemName}`)
+      setQuickWasteOpen(false)
+      setWasteItemName("")
+      setWasteQty(1)
+      loadPassData(true)
     } catch (err) {
-      console.error("Forecast retrain error:", err)
-      setActionSuccess("Demand forecast refreshed based on current sales velocity.")
-      setActiveModal(null)
-    } finally {
-      setIsSubmitting(false)
+      console.error("Quick waste failed:", err)
+      toast.error("Could not record waste.")
     }
   }
-
-  // 7-day sales aggregation for trend toggle
-  const sevenDaySalesTrend = [
-    { time: "Mon", actual: 34200, average: 32000 },
-    { time: "Tue", actual: 38400, average: 35000 },
-    { time: "Wed", actual: 41200, average: 39000 },
-    { time: "Thu", actual: 39800, average: 38500 },
-    { time: "Fri", actual: 52400, average: 48000 },
-    { time: "Sat", actual: 61800, average: 56000 },
-    { time: "Sun (Today)", actual: stats.todaySales || 42850, average: 40000 }
-  ]
-
-  // Monthly turnover estimation
-  const monthlyRevenue = stats.monthlyTurnover || (stats.todaySales ? Math.round(stats.todaySales * 28) : 1245800)
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header & Quick Actions Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-200 dark:border-stone-800">
+    <div className="space-y-8 animate-in fade-in duration-150">
+      {/* 1. TOP RAIL: Greeting + Kitchen Name + Event Chip */}
+      <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-paper-border dark:border-chalkboard-border">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              Restaurant Dashboard
-            </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-              Shift Active
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-semibold text-charcoal-muted dark:text-chalk-muted uppercase tracking-wider mb-1">
+            <span className="w-2 h-2 rounded-full bg-leaf inline-block animate-ping" />
+            <span>SpiceCraft Kitchen</span>
+            <span>•</span>
+            <span>The Pass Live Station</span>
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-            Real-time kitchen turnover, demand forecasting, stock alerts, and daily operations.
+          <h1 className="font-serif text-2xl sm:text-4xl font-extrabold text-charcoal dark:text-chalk tracking-tight">
+            {getGreeting()}, {user?.fullName ? user.fullName.split(" ")[0] : "Chef"}
+          </h1>
+          <p className="text-sm sm:text-base text-charcoal-muted dark:text-chalk-muted mt-1 font-medium">
+            {todayFormatted}
           </p>
         </div>
 
-        {/* Quick Actions Toolbar */}
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={() => {
-              if (menuItems.length && !saleForm.menuItemId) {
-                setSaleForm((prev) => ({ ...prev, menuItemId: String(menuItems[0].id) }))
-              }
-              setActiveModal("sale")
-            }}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Sale</span>
-          </button>
+        {/* Festival / Event Chip if active */}
+        <div className="flex items-center space-x-2 self-start sm:self-auto">
+          <div className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-turmeric-light dark:bg-turmeric-darkLight border border-turmeric/40 text-charcoal dark:text-turmeric text-xs sm:text-sm font-bold shadow-xs">
+            <Flame className="w-4 h-4 text-turmeric shrink-0 fill-turmeric/20" />
+            <span>Diwali Weekend Prep</span>
+            <span className="px-1.5 py-0.5 rounded bg-turmeric text-charcoal font-black text-[10px]">
+              +35% DEMAND
+            </span>
+          </div>
 
           <button
-            onClick={() => setActiveModal("menu")}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition cursor-pointer shadow-xs"
+            type="button"
+            onClick={() => loadPassData(true)}
+            className="p-2.5 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted dark:text-chalk-muted hover:text-charcoal hover:bg-paper-200 transition cursor-pointer"
+            title="Refresh The Pass"
+            aria-label="Refresh Pass"
           >
-            <UtensilsCrossed className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-            <span>Add Menu Item</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (ingredients.length && !inventoryForm.ingredientId) {
-                setInventoryForm((prev) => ({ ...prev, ingredientId: String(ingredients[0].id) }))
-              }
-              setActiveModal("inventory")
-            }}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition cursor-pointer shadow-xs"
-          >
-            <Boxes className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-            <span>Update Inventory</span>
-          </button>
-
-          <button
-            onClick={() => setActiveModal("forecast")}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition cursor-pointer shadow-xs"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-stone-500 dark:text-stone-400 ${refreshing ? "animate-spin" : ""}`} />
-            <span>Generate Forecast</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-chilli" : ""}`} />
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Notifications */}
-      {actionSuccess && (
-        <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="font-medium">{actionSuccess}</span>
+      {/* 2. THREE BIG NUMBERS ONLY: Sales Today, Waste Today, Money Saved This Week */}
+      <section aria-label="Key Performance Numbers">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatNumber
+            label="Sales Today"
+            prefix="₹"
+            value={stats.salesToday?.toLocaleString() || "48,500"}
+            delta="+18%"
+            deltaType="good"
+            subtext="On pace for busy dinner service"
+            accent="leaf"
+          />
+          <StatNumber
+            label="Waste Logged Today"
+            value="1.8"
+            suffix="kg"
+            delta="-32%"
+            deltaType="good"
+            subtext="Down from 2.6kg daily target"
+            accent="chilli"
+          />
+          <StatNumber
+            label="Money Saved This Week"
+            prefix="₹"
+            value="14,250"
+            delta="Saved"
+            deltaType="good"
+            subtext="Via AI portioning & leftover upcycling"
+            accent="turmeric"
+          />
         </div>
-      )}
+      </section>
 
-      {actionError && (
-        <div className="p-3 rounded-md bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-          <span className="font-medium">{actionError}</span>
-        </div>
-      )}
-
-      {/* 2. Key Performance Indicators (KPIs) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Today's Sales */}
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Today's Sales
-            </span>
-            <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-2">
-            ₹{(stats.todaySales || 42850).toLocaleString("en-IN")}
-          </div>
-          <div className="flex items-center text-xs font-medium text-emerald-700 dark:text-emerald-400 mt-1">
-            <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
-            <span>+{stats.salesGrowth || 14.2}% vs 7-day avg</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Total Revenue (MTD) */}
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Estimated Monthly Turnover
-            </span>
-            <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-2">
-            ₹{monthlyRevenue.toLocaleString("en-IN")}
-          </div>
-          <div className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Rolling 30-Day Projected Volume
-          </div>
+      {/* 3. "NEEDS ATTENTION" STRIP: Max 3 items only with ONE clear action button */}
+      <section aria-label="Needs Attention Strip" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif font-bold text-xl text-charcoal dark:text-chalk flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-chilli" />
+            <span>Needs Attention Right Now</span>
+          </h2>
+          <span className="text-xs font-semibold text-charcoal-muted dark:text-chalk-muted uppercase tracking-wider">
+            3 Critical Items
+          </span>
         </div>
 
-        {/* KPI 3: Predicted Demand */}
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              AI Predicted Demand
-            </span>
-            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-2">
-            {stats.predictedOrders || 148}
-            <span className="text-xs font-normal text-stone-500 dark:text-stone-400 ml-1.5">orders</span>
-          </div>
-          <div className="text-xs text-stone-500 dark:text-stone-400 mt-1 font-mono">
-            95% CI: {stats.predictedOrderRange || "138 - 158"} portions
-          </div>
-        </div>
-
-        {/* KPI 4: Inventory Valuation & Risk */}
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Inventory Valuation
-            </span>
-            <Boxes className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-stone-900 dark:text-stone-100 tracking-tight mt-2">
-            ₹{(stats.totalInventoryValue || 148620).toLocaleString("en-IN")}
-          </div>
-          <div className="flex items-center space-x-1.5 text-xs text-amber-700 dark:text-amber-400 font-medium mt-1">
-            <span>{stats.lowStockCount || 4} low stock</span>
-            <span className="text-stone-300 dark:text-stone-700">•</span>
-            <span className="text-rose-700 dark:text-rose-400">{stats.nearExpiryCount || 3} near expiry</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Main Dashboard Layout — Visual Analytics & Operational Lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Section (7 columns on desktop) */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* Chart 1: Sales Overview */}
-          <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-              <div>
-                <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Sales Overview
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Revenue volume compared against historical shift baseline
-                </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Card 1: Expiring Soon */}
+          <Ticket status="red" className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-chilli uppercase tracking-wider">
+                  Use Today
+                </span>
+                <span className="text-[11px] font-medium text-charcoal-muted dark:text-chalk-muted">
+                  Expires in 4 hrs
+                </span>
               </div>
+              <h3 className="font-bold text-base text-charcoal dark:text-chalk">
+                Fresh Paneer (Batch #P-104)
+              </h3>
+              <p className="text-xs text-charcoal-muted dark:text-chalk-muted mt-1">
+                4.5 kg remaining in walk-in cooler. Prioritize in today's lunch rush.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-paper-border dark:border-chalkboard-border">
+              <BigButton
+                size="sm"
+                variant="primary"
+                fullWidth
+                onClick={() => {
+                  setQuickSaleOpen(true)
+                  const paneerDish = menuItems.find((m) => m.name.toLowerCase().includes("paneer"))
+                  if (paneerDish) setSelectedDishForSale(paneerDish)
+                }}
+              >
+                Sell in Special
+              </BigButton>
+            </div>
+          </Ticket>
 
-              {/* Segmented Filter */}
-              <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-0.5 rounded-md text-xs font-medium self-start sm:self-auto border border-stone-200 dark:border-stone-700">
-                <button
-                  type="button"
-                  onClick={() => setSalesTrendView("hourly")}
-                  className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                    salesTrendView === "hourly"
-                      ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold"
-                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                  }`}
-                >
-                  Hourly Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSalesTrendView("daily")}
-                  className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                    salesTrendView === "daily"
-                      ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold"
-                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                  }`}
-                >
-                  7-Day Trend
-                </button>
+          {/* Card 2: Running Low */}
+          <Ticket status="yellow" className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-turmeric uppercase tracking-wider">
+                  Running Low
+                </span>
+                <span className="text-[11px] font-medium text-charcoal-muted dark:text-chalk-muted">
+                  Below Par
+                </span>
               </div>
+              <h3 className="font-bold text-base text-charcoal dark:text-chalk">
+                Red Onions (Nashik Medium)
+              </h3>
+              <p className="text-xs text-charcoal-muted dark:text-chalk-muted mt-1">
+                Only 8 kg in store. Par is 25 kg. Weekend prep requires full sack.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-paper-border dark:border-chalkboard-border">
+              <BigButton
+                size="sm"
+                variant="warning"
+                fullWidth
+                onClick={() => navigate("/purchase-planner")}
+              >
+                Add to Reorder List
+              </BigButton>
+            </div>
+          </Ticket>
+
+          {/* Card 3: High Waste Risk */}
+          <Ticket status="yellow" className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-turmeric uppercase tracking-wider">
+                  Surplus Risk
+                </span>
+                <span className="text-[11px] font-medium text-charcoal-muted dark:text-chalk-muted">
+                  Upcycle Match
+                </span>
+              </div>
+              <h3 className="font-bold text-base text-charcoal dark:text-chalk">
+                Cooked Basmati Rice
+              </h3>
+              <p className="text-xs text-charcoal-muted dark:text-chalk-muted mt-1">
+                3.2 kg leftover from yesterday. Can upcycle into Rice Kheer or Tawa Pulao.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-paper-border dark:border-chalkboard-border">
+              <BigButton
+                size="sm"
+                variant="secondary"
+                fullWidth
+                onClick={() => navigate("/ai-recipes")}
+              >
+                View Upcycle Recipe
+              </BigButton>
+            </div>
+          </Ticket>
+        </div>
+      </section>
+
+      {/* 4. EXPECTED DEMAND: Simple Forecast Bar showing tomorrow's predicted covers */}
+      <section aria-label="Expected Covers Forecast">
+        <Ticket className="bg-gradient-to-r from-white via-paper-50 to-white dark:from-chalkboard-card dark:via-chalkboard dark:to-chalkboard-card">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="max-w-xl">
+              <div className="flex items-center space-x-2 text-xs font-bold text-leaf uppercase tracking-wider mb-1">
+                <TrendingUp className="w-4 h-4" />
+                <span>AI Demand Forecast</span>
+              </div>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-charcoal dark:text-chalk">
+                Expect about 245 plates tomorrow
+              </h2>
+              <p className="text-sm text-charcoal-muted dark:text-chalk-muted mt-1">
+                Busier than a typical Friday due to Diwali season reservations and cooler evening temperatures.
+              </p>
             </div>
 
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={salesTrendView === "hourly" ? hourlySales : sevenDaySalesTrend}
-                  margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={isDark ? "#292524" : "#f5f5f4"}
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="time"
-                    stroke={isDark ? "#a8a29e" : "#78716c"}
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={{ stroke: isDark ? "#44403c" : "#e7e5e4" }}
-                  />
-                  <YAxis
-                    stroke={isDark ? "#a8a29e" : "#78716c"}
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={{ stroke: isDark ? "#44403c" : "#e7e5e4" }}
-                    tickFormatter={(val) => `₹${val >= 1000 ? `${val / 1000}k` : val}`}
-                  />
-                  <Tooltip
-                    formatter={(val) => [`₹${val.toLocaleString("en-IN")}`, "Revenue"]}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1c1917" : "#ffffff",
-                      borderColor: isDark ? "#44403c" : "#e7e5e4",
-                      borderRadius: "6px",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                      fontSize: "12px",
-                      color: isDark ? "#fafaf9" : "#1c1917"
+            {/* Visual Cover Range Band */}
+            <div className="p-3.5 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border min-w-[240px]">
+              <div className="flex justify-between text-xs text-charcoal-muted dark:text-chalk-muted font-medium mb-1">
+                <span>Confidence Band</span>
+                <span className="font-bold text-charcoal dark:text-chalk">220 – 270 plates</span>
+              </div>
+              <div className="w-full h-3 bg-paper-200 dark:bg-chalkboard-border rounded-full overflow-hidden relative">
+                <div
+                  className="absolute top-0 bottom-0 bg-leaf/40 rounded-full"
+                  style={{ left: "20%", right: "15%" }}
+                />
+                <div
+                  className="absolute top-0 bottom-0 w-2.5 bg-chilli rounded-full -ml-1"
+                  style={{ left: "55%" }}
+                  title="Model median: 245 plates"
+                />
+              </div>
+              <div className="flex justify-between text-[11px] text-charcoal-muted dark:text-chalk-muted mt-1">
+                <span>Quiet (180)</span>
+                <span className="font-bold text-chilli">Predicted: 245</span>
+                <span>Peak (300)</span>
+              </div>
+            </div>
+          </div>
+        </Ticket>
+      </section>
+
+      {/* 5. TODAY'S PREP LIST: Daily Action Plan as big tick-off tasks grouped by station */}
+      <section aria-label="Today's Prep List" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-4">
+            <ProgressRing completed={completedCount} total={totalCount} size={64} />
+            <div>
+              <h2 className="font-serif font-bold text-xl sm:text-2xl text-charcoal dark:text-chalk">
+                Today's Prep List
+              </h2>
+              <p className="text-xs sm:text-sm text-charcoal-muted dark:text-chalk-muted">
+                {completedCount} of {totalCount} tasks completed for today's service
+              </p>
+            </div>
+          </div>
+
+          {/* Station Filter Chips */}
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+            {stations.map((st) => (
+              <FilterChip
+                key={st}
+                label={st === "all" ? "All Stations" : st}
+                active={selectedStation === st}
+                onClick={() => setSelectedStation(st)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Task Cards Grid */}
+        <div className="space-y-2.5">
+          {filteredTasks.map((task) => {
+            const isDone = task.completed
+            return (
+              <div
+                key={task.taskId}
+                onClick={() => toggleTask(task.taskId)}
+                className={`flex items-center justify-between p-4 sm:p-5 rounded-xl border transition-all duration-150 cursor-pointer select-none active:scale-[0.99] ${
+                  isDone
+                    ? "bg-paper-100/60 dark:bg-chalkboard/60 border-paper-border/80 dark:border-chalkboard-border opacity-75 line-through-text"
+                    : "bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border shadow-ticket hover:border-chilli/40"
+                }`}
+              >
+                <div className="flex items-center space-x-3.5 sm:space-x-4 min-w-0">
+                  {/* Oversized Checkbox Target */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleTask(task.taskId)
                     }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="average"
-                    stroke={isDark ? "#78716c" : "#94a3b8"}
-                    strokeDasharray="4 4"
-                    fill="none"
-                    strokeWidth={1.5}
-                    name="Baseline Avg"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#15803d"
-                    fill="#15803d"
-                    fillOpacity={isDark ? 0.2 : 0.12}
-                    strokeWidth={2}
-                    name="Actual Sales"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                      isDone
+                        ? "bg-leaf text-white"
+                        : "bg-paper-100 dark:bg-chalkboard border-2 border-paper-border dark:border-chalkboard-border text-transparent hover:border-chilli"
+                    }`}
+                    aria-label={`Mark ${task.dishName || task.taskName} complete`}
+                  >
+                    <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                  </button>
 
-          {/* Chart 2: Actual vs Predicted Demand */}
-          <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-              <div>
-                <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Actual vs Predicted Demand
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Shift order counts compared against machine-learning predictions
-                </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-2 flex-wrap">
+                      <span className="font-bold text-base sm:text-lg text-charcoal dark:text-chalk truncate">
+                        {task.dishName || task.taskName}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-paper-200 dark:bg-chalkboard text-xs font-semibold text-charcoal-muted dark:text-chalk-muted">
+                        {task.station || "Kitchen"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-3 text-xs sm:text-sm text-charcoal-muted dark:text-chalk-muted mt-0.5">
+                      <span className="font-semibold text-charcoal dark:text-chalk">
+                        Target: {task.portions || task.targetPortions} {task.unit || "portions"}
+                      </span>
+                      <span>•</span>
+                      <span>Est: {task.timeEst || "25 min"}</span>
+                      {task.assignedTo && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline">{task.assignedTo}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shrink-0 pl-2">
+                  <span
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                      isDone
+                        ? "bg-leaf-light dark:bg-leaf-darkLight text-leaf"
+                        : "bg-paper-200 dark:bg-chalkboard text-charcoal-muted dark:text-chalk-muted"
+                    }`}
+                  >
+                    {isDone ? "Done" : "Tap to complete"}
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-mono font-medium text-stone-600 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700 self-start sm:self-auto">
-                Model MAE: ±3.2 portions
-              </span>
-            </div>
-
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={demandComp} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke={isDark ? "#292524" : "#f5f5f4"}
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="day"
-                    stroke={isDark ? "#a8a29e" : "#78716c"}
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={{ stroke: isDark ? "#44403c" : "#e7e5e4" }}
-                  />
-                  <YAxis
-                    stroke={isDark ? "#a8a29e" : "#78716c"}
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={{ stroke: isDark ? "#44403c" : "#e7e5e4" }}
-                  />
-                  <Tooltip
-                    formatter={(val, name) => [
-                      val ? `${val} portions` : "Forecast Pending",
-                      name === "actual" ? "Actual Orders" : "AI Forecast"
-                    ]}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1c1917" : "#ffffff",
-                      borderColor: isDark ? "#44403c" : "#e7e5e4",
-                      borderRadius: "6px",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                      fontSize: "12px",
-                      color: isDark ? "#fafaf9" : "#1c1917"
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                  <Bar dataKey="actual" fill="#15803d" name="Actual Orders" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="predicted" fill="#d97706" name="AI Forecast" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+            )
+          })}
         </div>
+      </section>
 
-        {/* Right Section (5 columns on desktop) */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* 1. Low Stock Alerts */}
-          <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-100 dark:border-stone-800">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Low Stock Alerts
-                </h2>
+      {/* 6. "SEE MORE" COLLAPSIBLE: Everything else is hidden so the live pass stays clean */}
+      <section className="pt-2">
+        <button
+          type="button"
+          onClick={() => setShowMore(!showMore)}
+          className="w-full flex items-center justify-between p-4 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border hover:bg-paper-200 dark:hover:bg-chalkboard-border transition cursor-pointer"
+        >
+          <div className="flex items-center space-x-2 font-serif font-bold text-base text-charcoal dark:text-chalk">
+            <span>Operational Trends & Charts</span>
+            <span className="text-xs font-sans font-normal text-charcoal-muted dark:text-chalk-muted">
+              (Hourly rush, category splits, activity log)
+            </span>
+          </div>
+          <div className="flex items-center space-x-1 text-xs font-bold text-chilli">
+            <span>{showMore ? "Collapse" : "See more"}</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${
+                showMore ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+        </button>
+
+        {showMore && (
+          <div className="mt-4 p-5 rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border shadow-ticket space-y-6 animate-in fade-in duration-200">
+            {/* Hourly sales rush curve */}
+            <div>
+              <h3 className="font-serif font-bold text-base text-charcoal dark:text-chalk mb-3">
+                Today's Hourly Covers & Sales Rush
+              </h3>
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hourlySales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="passSalesGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#D9381E" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#D9381E" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="time"
+                      stroke={isDark ? "#A5A095" : "#6B6358"}
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke={isDark ? "#A5A095" : "#6B6358"}
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? "#1F1E1B" : "#FAF6EE",
+                        borderColor: isDark ? "#2F2D28" : "#E4DCCE",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="sales"
+                      stroke="#D9381E"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#passSalesGrad)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
+            </div>
+
+            {/* Quick links to deep reports */}
+            <div className="pt-4 border-t border-paper-border dark:border-chalkboard-border flex flex-wrap gap-3">
+              <Link
+                to="/sales"
+                className="inline-flex items-center space-x-1.5 text-xs font-bold text-chilli hover:underline"
+              >
+                <span>Go to Full POS Pad</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <span className="text-charcoal-muted dark:text-chalk-muted">•</span>
               <Link
                 to="/inventory"
-                className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center space-x-1"
+                className="inline-flex items-center space-x-1.5 text-xs font-bold text-chilli hover:underline"
               >
-                <span>All Inventory</span>
-                <ChevronRight className="w-3 h-3" />
+                <span>Inspect All 100+ Ingredients</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-            </div>
-
-            <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
-              {lowStockItems.length === 0 ? (
-                <div className="py-4 text-center text-stone-400 text-xs">
-                  All ingredients are currently above par safety levels.
-                </div>
-              ) : (
-                lowStockItems.map((item) => (
-                  <div key={item.id} className="py-2.5 flex items-center justify-between">
-                    <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-stone-900 dark:text-stone-100 truncate">
-                        {item.name}
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                        Par: {item.parLevel || item.reorderPoint || 10} {item.unit} • {item.supplier || item.supplierName || "Default Supplier"}
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="font-mono font-bold text-amber-700 dark:text-amber-400">
-                        {item.currentStock ?? item.stock} {item.unit}
-                      </div>
-                      <Link
-                        to="/purchase-planner"
-                        className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline font-medium inline-block mt-0.5"
-                      >
-                        + Create PO
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 2. Near Expiry Ingredients */}
-          <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-100 dark:border-stone-800">
-              <div className="flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                  Near Expiry (≤48h)
-                </h2>
-              </div>
+              <span className="text-charcoal-muted dark:text-chalk-muted">•</span>
               <Link
-                to="/waste?tab=expiry"
-                className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center space-x-1"
+                to="/daily-plan"
+                className="inline-flex items-center space-x-1.5 text-xs font-bold text-chilli hover:underline"
               >
-                <span>Expiry Log</span>
-                <ChevronRight className="w-3 h-3" />
+                <span>Edit Full Chef Plan Form</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+          </div>
+        )}
+      </section>
 
-            <div className="divide-y divide-stone-100 dark:divide-stone-800 text-xs">
-              {nearExpiryList.length === 0 ? (
-                <div className="py-4 text-center text-stone-400 text-xs">
-                  No batches expiring within the next 48 hours.
-                </div>
-              ) : (
-                nearExpiryList.map((batch) => (
-                  <div key={batch.id} className="py-2.5 flex items-center justify-between">
-                    <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-stone-900 dark:text-stone-100 truncate">
-                        {batch.ingredientName || batch.ingredient || "Batch Item"}
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                        {batch.batchNumber || batch.id} • Exp: {batch.expiryDate}
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="font-mono font-bold text-rose-700 dark:text-rose-400">
-                        {batch.remainingQuantity ?? batch.quantity} {batch.unit}
-                      </div>
-                      <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                        {batch.daysLeft <= 1 ? "Expires Tomorrow" : `Expires in ${batch.daysLeft || 2}d`}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+      {/* QUICK SALE BOTTOM SHEET */}
+      <BottomSheet
+        isOpen={quickSaleOpen}
+        onClose={() => setQuickSaleOpen(false)}
+        title="Quick Record Sale"
+        subtitle="Log dish portions directly from the pass"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-2">
+              Select Dish
+            </label>
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+              {menuItems.map((dish) => {
+                const isSelected = selectedDishForSale?.id === dish.id
+                return (
+                  <button
+                    key={dish.id}
+                    type="button"
+                    onClick={() => setSelectedDishForSale(dish)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer select-none ${
+                      isSelected
+                        ? "bg-chilli text-white border-chilli font-bold"
+                        : "bg-white dark:bg-chalkboard border-paper-border dark:border-chalkboard-border text-charcoal dark:text-chalk"
+                    }`}
+                  >
+                    <div className="text-sm truncate">{dish.name}</div>
+                    <div className="text-xs opacity-80">₹{dish.price || 220}</div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* 3. Recent Activities Stream */}
-          <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-stone-100 dark:border-stone-800">
-              <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                Recent Activities
-              </h2>
-              <span className="text-[11px] text-stone-500 dark:text-stone-400">Live Ledger</span>
-            </div>
+          <div className="flex items-center justify-between p-3 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border">
+            <span className="font-bold text-sm text-charcoal dark:text-chalk">Portions</span>
+            <Stepper value={salePortions} onChange={setSalePortions} min={1} max={50} />
+          </div>
 
-            <div className="divide-y divide-stone-100 dark:divide-stone-800">
-              {activities.slice(0, 4).map((act) => (
-                <div key={act.id} className="py-2 flex items-start space-x-2.5 text-xs">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 mt-1.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-stone-900 dark:text-stone-100 truncate">
-                        {act.title}
-                      </span>
-                      <span className="text-[10px] text-stone-400 font-mono shrink-0 ml-1">
-                        {act.time}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-1 mt-0.5">
-                      {act.description}
-                    </p>
-                  </div>
-                </div>
+          <div className="flex items-center justify-between font-serif font-bold text-lg pt-2 border-t border-paper-border dark:border-chalkboard-border">
+            <span>Total Amount</span>
+            <span className="text-chilli">
+              ₹{((selectedDishForSale?.price || 220) * salePortions).toLocaleString()}
+            </span>
+          </div>
+
+          <BigButton variant="primary" fullWidth size="lg" onClick={handleRecordSale}>
+            Confirm & Log Sale
+          </BigButton>
+        </div>
+      </BottomSheet>
+
+      {/* QUICK WASTE BOTTOM SHEET */}
+      <BottomSheet
+        isOpen={quickWasteOpen}
+        onClose={() => setQuickWasteOpen(false)}
+        title="Log Kitchen Waste"
+        subtitle="2-step waste recording"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-1.5">
+              Item or Ingredient Name
+            </label>
+            <input
+              type="text"
+              value={wasteItemName}
+              onChange={(e) => setWasteItemName(e.target.value)}
+              placeholder="e.g. Cooked Gravy, Sliced Tomatoes"
+              className="w-full p-3 text-base"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border">
+            <span className="font-bold text-sm text-charcoal dark:text-chalk">Quantity</span>
+            <Stepper value={wasteQty} onChange={setWasteQty} min={0.25} step={0.25} unit="kg" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-2">
+              Reason
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {["Spoilage", "Expiry", "Overproduction", "Prep Trim"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setWasteReason(r)}
+                  className={`p-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
+                    wasteReason === r
+                      ? "bg-turmeric text-charcoal border-turmeric font-bold"
+                      : "bg-white dark:bg-chalkboard border-paper-border dark:border-chalkboard-border text-charcoal dark:text-chalk"
+                  }`}
+                >
+                  {r}
+                </button>
               ))}
             </div>
           </div>
+
+          <BigButton
+            variant="primary"
+            fullWidth
+            size="lg"
+            disabled={!wasteItemName.trim()}
+            onClick={handleRecordWaste}
+          >
+            Save Waste Record
+          </BigButton>
         </div>
-      </div>
-
-      {/* ============================================================== */}
-      {/* QUICK ACTION MODALS (Functional & Connected to Backend)       */}
-      {/* ============================================================== */}
-
-      {/* 1. Modal: Record POS Sale */}
-      {activeModal === "sale" && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg max-w-md w-full shadow-xl p-5 text-stone-900 dark:text-stone-100">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 mb-4">
-              <div className="flex items-center space-x-2">
-                <Receipt className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <h3 className="text-sm font-bold">Record POS Sale Order</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSale} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Select Menu Dish
-                </label>
-                <select
-                  required
-                  value={saleForm.menuItemId}
-                  onChange={(e) => setSaleForm({ ...saleForm, menuItemId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs focus:bg-white dark:focus:bg-stone-900"
-                >
-                  <option value="">Choose dish from menu...</option>
-                  {menuItems.map((dish) => (
-                    <option key={dish.id} value={dish.id}>
-                      {dish.name} (₹{dish.price})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Portions Sold
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={saleForm.quantity}
-                    onChange={(e) => setSaleForm({ ...saleForm, quantity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Payment Channel
-                  </label>
-                  <select
-                    value={saleForm.paymentMethod}
-                    onChange={(e) => setSaleForm({ ...saleForm, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                  >
-                    <option value="UPI">UPI / QR Scan</option>
-                    <option value="Cash">Cash (POS)</option>
-                    <option value="Card">Card Terminal</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Order Channel
-                  </label>
-                  <select
-                    value={saleForm.channel}
-                    onChange={(e) => setSaleForm({ ...saleForm, channel: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                  >
-                    <option value="Dine-in">Dine-in</option>
-                    <option value="Takeaway">Takeaway</option>
-                    <option value="Online">Online Delivery</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Table / Reference
-                  </label>
-                  <input
-                    type="text"
-                    value={saleForm.tableNumber}
-                    onChange={(e) => setSaleForm({ ...saleForm, tableNumber: e.target.value })}
-                    placeholder="e.g. Table 5"
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-3.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmitting ? "Processing..." : "Record Order"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Modal: Add Menu Item */}
-      {activeModal === "menu" && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg max-w-md w-full shadow-xl p-5 text-stone-900 dark:text-stone-100">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 mb-4">
-              <div className="flex items-center space-x-2">
-                <UtensilsCrossed className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <h3 className="text-sm font-bold">Add New Menu Dish</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddMenuItem} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Dish Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Paneer Lababdar, Masala Dosa"
-                  value={menuForm.name}
-                  onChange={(e) => setMenuForm({ ...menuForm, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={menuForm.category}
-                    onChange={(e) => setMenuForm({ ...menuForm, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                  >
-                    <option value="Mains">Mains</option>
-                    <option value="Starters">Starters</option>
-                    <option value="Thali">Thali</option>
-                    <option value="South Indian">South Indian</option>
-                    <option value="Snacks">Snacks</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Desserts">Desserts</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Dietary Type
-                  </label>
-                  <select
-                    value={menuForm.isVeg ? "veg" : "nonveg"}
-                    onChange={(e) => setMenuForm({ ...menuForm, isVeg: e.target.value === "veg" })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                  >
-                    <option value="veg">Vegetarian (🌱)</option>
-                    <option value="nonveg">Non-Vegetarian (🍗)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Selling Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="280"
-                    value={menuForm.price}
-                    onChange={(e) => setMenuForm({ ...menuForm, price: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Cost Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="85"
-                    value={menuForm.costPrice}
-                    onChange={(e) => setMenuForm({ ...menuForm, costPrice: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Description / Kitchen Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Signature spiced gravy cooked in copper vessel"
-                  value={menuForm.description}
-                  onChange={(e) => setMenuForm({ ...menuForm, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-3.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmitting ? "Creating..." : "Add to Catalog"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Modal: Update Inventory Stock / Log Waste */}
-      {activeModal === "inventory" && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg max-w-md w-full shadow-xl p-5 text-stone-900 dark:text-stone-100">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 mb-4">
-              <div className="flex items-center space-x-2">
-                <Boxes className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <h3 className="text-sm font-bold">Update Stock & Batch Levels</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateInventory} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Select Ingredient
-                </label>
-                <select
-                  required
-                  value={inventoryForm.ingredientId}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, ingredientId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                >
-                  <option value="">Select ingredient...</option>
-                  {ingredients.map((ing) => (
-                    <option key={ing.id} value={ing.id}>
-                      {ing.name} (Stock: {ing.currentStock} {ing.unit})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Operation
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInventoryForm({ ...inventoryForm, actionType: "adjust" })}
-                    className={`py-1.5 px-3 rounded-md text-xs font-medium border text-center transition cursor-pointer ${
-                      inventoryForm.actionType === "adjust"
-                        ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-semibold"
-                        : "border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400"
-                    }`}
-                  >
-                    Stock Audit Count
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInventoryForm({ ...inventoryForm, actionType: "waste" })}
-                    className={`py-1.5 px-3 rounded-md text-xs font-medium border text-center transition cursor-pointer ${
-                      inventoryForm.actionType === "waste"
-                        ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300 font-semibold"
-                        : "border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400"
-                    }`}
-                  >
-                    Record Waste / Loss
-                  </button>
-                </div>
-              </div>
-
-              {inventoryForm.actionType === "adjust" ? (
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    New Physical Count
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    required
-                    placeholder="e.g. 18.5"
-                    value={inventoryForm.newStock}
-                    onChange={(e) => setInventoryForm({ ...inventoryForm, newStock: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-mono"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Discarded Quantity
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    placeholder="e.g. 2.5"
-                    value={inventoryForm.quantity}
-                    onChange={(e) => setInventoryForm({ ...inventoryForm, quantity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-mono"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
-                  Reason / Operational Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Spoilage, moisture condensation, weekly count"
-                  value={inventoryForm.reason}
-                  onChange={(e) => setInventoryForm({ ...inventoryForm, reason: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-3.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {isSubmitting ? "Updating..." : "Confirm Update"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Modal: Retrain Demand Models */}
-      {activeModal === "forecast" && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg max-w-md w-full shadow-xl p-5 text-stone-900 dark:text-stone-100">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800 mb-4">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <h3 className="text-sm font-bold">Generate AI Demand Forecast</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs leading-relaxed">
-              <p className="text-stone-600 dark:text-stone-400">
-                Triggering the demand model will process the latest POS sales transactions, festival calendar multipliers, and day-of-week trends to update forecasted portions for the next 14 days.
-              </p>
-
-              <div className="p-3 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 space-y-1">
-                <div className="flex justify-between text-stone-700 dark:text-stone-300">
-                  <span>Ensemble Models:</span>
-                  <span className="font-semibold text-stone-900 dark:text-stone-100">Ridge + Random Forest</span>
-                </div>
-                <div className="flex justify-between text-stone-700 dark:text-stone-300">
-                  <span>Evaluation Metric:</span>
-                  <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">MAE: ±3.2 portions</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal(null)}
-                  className="px-3 py-1.5 rounded-md border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGenerateForecast}
-                  disabled={isSubmitting}
-                  className="px-3.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? "animate-spin" : ""}`} />
-                  <span>{isSubmitting ? "Processing Models..." : "Run AI Models Now"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </BottomSheet>
     </div>
   )
 }
-
-export default DashboardPage

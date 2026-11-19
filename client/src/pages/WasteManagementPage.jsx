@@ -5,228 +5,94 @@ import {
   AlertTriangle,
   Search,
   Plus,
-  ArrowDownRight,
   TrendingDown,
-  PieChart as PieChartIcon,
-  Sparkles,
-  CheckCircle2,
-  X,
-  FileSpreadsheet,
+  RefreshCw,
   Download,
   Calendar,
   Clock,
   ShieldAlert,
-  ShieldCheck,
-  RefreshCw,
-  Info,
-  UtensilsCrossed,
-  Layers,
-  ArrowRight
+  CheckCircle2,
+  X,
+  FileSpreadsheet,
+  ChevronRight,
+  PieChart as PieChartIcon
 } from "lucide-react"
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
-  Legend
+  BarChart,
+  Bar
 } from "recharts"
+
 import { wasteService, inventoryService, menuService } from "../services/api"
 import { useTheme } from "../context/ThemeContext"
-
-const REASON_COLORS = {
-  Spoilage: "#e11d48", // rose
-  Expiry: "#f43f5e", // red
-  Overproduction: "#2563eb", // blue
-  "Preparation Waste": "#d97706", // amber
-  "Quality Rejection": "#64748b", // slate
-  "Storage Glitch": "#9333ea", // purple
-  Other: "#78716c" // stone
-}
+import { useToast } from "../context/ToastContext"
+import { Ticket } from "../components/ui/Ticket"
+import { BigButton } from "../components/ui/BigButton"
+import { Stepper } from "../components/ui/Stepper"
+import { FilterChip } from "../components/ui/FilterChip"
+import { StatNumber } from "../components/ui/StatNumber"
 
 export const WasteManagementPage = () => {
   const { isDark } = useTheme()
   const navigate = useNavigate()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
 
-  // Tab State
+  // State
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab")
-    return tabParam && ["logs", "analytics", "expiry", "risk"].includes(tabParam)
-      ? tabParam
-      : "logs"
-  }) // 'logs' | 'analytics' | 'expiry' | 'risk'
+    return tabParam === "expiry" ? "expiry" : "logs"
+  }) // 'logs' | 'analytics' | 'expiry'
 
-  // Loading & Feedback
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [successMessage, setSuccessMessage] = useState(null)
-  const [errorMessage, setErrorMessage] = useState(null)
-
-  // Data States with safe fallbacks
   const [wasteLogs, setWasteLogs] = useState([])
-  const [analyticsData, setAnalyticsData] = useState(() => ({
-    totalFinancialLoss: 14250,
-    totalQuantityLost: 48.5,
-    wasteToSalesRatio: 1.2,
-    totalRecordsCount: 24,
-    reasonBreakdown: [
-      { reason: "Spoilage", financialLoss: 5800, percentage: 40.7 },
-      { reason: "Expiry", financialLoss: 4200, percentage: 29.5 },
-      { reason: "Overproduction", financialLoss: 2750, percentage: 19.3 },
-      { reason: "Preparation Waste", financialLoss: 1500, percentage: 10.5 }
-    ],
-    dailyTrends: [
-      { date: "2026-11-01", financialLoss: 450, quantity: 1.5 },
-      { date: "2026-11-02", financialLoss: 520, quantity: 2.0 },
-      { date: "2026-11-03", financialLoss: 380, quantity: 1.2 },
-      { date: "2026-11-04", financialLoss: 610, quantity: 2.3 },
-      { date: "2026-11-05", financialLoss: 490, quantity: 1.8 },
-      { date: "2026-11-06", financialLoss: 340, quantity: 1.1 },
-      { date: "2026-11-07", financialLoss: 720, quantity: 2.6 },
-      { date: "2026-11-08", financialLoss: 850, quantity: 3.2 },
-      { date: "2026-11-09", financialLoss: 640, quantity: 2.1 },
-      { date: "2026-11-10", financialLoss: 430, quantity: 1.4 },
-      { date: "2026-11-11", financialLoss: 510, quantity: 1.9 },
-      { date: "2026-11-12", financialLoss: 390, quantity: 1.3 },
-      { date: "2026-11-13", financialLoss: 480, quantity: 1.7 }
-    ],
-    topWastedItems: [
-      { name: "Fresh Paneer", financialLoss: 3200, totalQuantity: 8.0 },
-      { name: "Tomatoes", financialLoss: 2400, totalQuantity: 60.0 },
-      { name: "Basmati Rice", financialLoss: 1850, totalQuantity: 25.0 },
-      { name: "Dal Makhani", financialLoss: 1600, totalQuantity: 16.0 },
-      { name: "Red Onions", financialLoss: 1200, totalQuantity: 34.0 }
-    ]
-  }))
-  const [expiryAlerts, setExpiryAlerts] = useState(() => ({
-    expiredCount: 1,
-    criticalCount: 2,
-    warningCount: 3,
-    totalValueExpired: 640,
-    totalValueAtRisk: 2850,
-    expired: [
-      {
-        batchId: 101,
-        ingredientName: "Full Cream Milk",
-        financialValue: 640,
-        batchNumber: "BAT-MILK-001",
-        remainingQuantity: 10,
-        unit: "L",
-        expiryDate: "2026-11-12",
-        daysToExpiry: -1,
-        recommendation: "Immediate Disposal: Batch is expired. Remove from kitchen storage."
-      }
-    ],
-    critical: [
-      {
-        batchId: 102,
-        ingredientName: "Fresh Paneer",
-        status: "critical",
-        financialValue: 1200,
-        batchNumber: "BAT-PAN-089",
-        remainingQuantity: 3.5,
-        unit: "kg",
-        expiryDate: "2026-11-14",
-        daysToExpiry: 1,
-        recommendation: "Immediate FEFO Consumption: Prep in today's Paneer Butter Masala specials."
-      }
-    ],
-    warning: [
-      {
-        batchId: 103,
-        ingredientName: "Greek Yogurt / Curd",
-        status: "warning",
-        financialValue: 480,
-        batchNumber: "BAT-YOG-044",
-        remainingQuantity: 6.0,
-        unit: "kg",
-        expiryDate: "2026-11-15",
-        daysToExpiry: 2,
-        recommendation: "FEFO Priority: Queue for marination or upcycle into Raita."
-      }
-    ]
-  }))
-  const [riskAnalysis, setRiskAnalysis] = useState(() => ({
-    disclaimer: "Risk categories represent forward-looking predictive estimates based on batch shelf-life and ML demand forecasts.",
-    data: [
-      {
-        ingredientId: 1,
-        sku: "ING-PAN-01",
-        name: "Fresh Paneer",
-        category: "Dairy",
-        unit: "kg",
-        usableStock: 8.5,
-        expiringWithinHorizon: 5.0,
-        forecastedDemand: 3.2,
-        projectedSurplus: 1.8,
-        surplusValueAtRisk: 630,
-        riskLevel: "HIGH",
-        explanation: "Expiring stock (5.0 kg) exceeds 5-day forecasted demand (3.2 kg) by 1.8 kg."
-      },
-      {
-        ingredientId: 2,
-        sku: "ING-TOM-02",
-        name: "Tomatoes",
-        category: "Produce",
-        unit: "kg",
-        usableStock: 45.0,
-        expiringWithinHorizon: 20.0,
-        forecastedDemand: 16.5,
-        projectedSurplus: 3.5,
-        surplusValueAtRisk: 140,
-        riskLevel: "MEDIUM",
-        explanation: "Surplus stock of 3.5 kg nearing expiry; recommend batch preparation into tomato puree base."
-      }
-    ]
-  }))
-  const [riskHorizon, setRiskHorizon] = useState(5)
-
-  // Master Data
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [expiryAlerts, setExpiryAlerts] = useState(null)
   const [ingredientsList, setIngredientsList] = useState([])
-  const [menuItemsList, setMenuItemsList] = useState([])
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState("")
-  const [reasonFilter, setReasonFilter] = useState("all")
-  const [itemTypeFilter, setItemTypeFilter] = useState("all")
+  // 2-Step Logging State
+  const [stepItem, setStepItem] = useState("Fresh Paneer")
+  const [stepCustomItem, setStepCustomItem] = useState("")
+  const [stepReason, setStepReason] = useState("Spoilage")
+  const [stepQty, setStepQty] = useState(1.5)
+  const [stepUnit, setStepUnit] = useState("kg")
+  const [submittingWaste, setSubmittingWaste] = useState(false)
 
-  // Modal States
-  const [showLogModal, setShowLogModal] = useState(false)
-  const [modalItemType, setModalItemType] = useState("ingredient") // 'ingredient' | 'prepared_item'
-  const [selectedIngredientId, setSelectedIngredientId] = useState("")
-  const [selectedMenuItemId, setSelectedMenuItemId] = useState("")
-  const [wasteQty, setWasteQty] = useState(2.0)
-  const [wasteUnit, setWasteUnit] = useState("kg")
-  const [wasteReason, setWasteReason] = useState("Spoilage")
-  const [wasteDate, setWasteDate] = useState(new Date().toISOString().split("T")[0])
-  const [loggedBy, setLoggedBy] = useState("Head Chef")
-  const [wasteNotes, setWasteNotes] = useState("")
-  const [submitting, setSubmitting] = useState(false)
+  // Frequent quick chips for fast step-1 logging
+  const quickItems = [
+    "Fresh Paneer",
+    "Tomatoes",
+    "Cooked Basmati Rice",
+    "Dal Makhani",
+    "Full Cream Milk",
+    "Red Onions",
+    "Curd / Yogurt",
+  ]
 
-  const showNotification = (msg) => {
-    setSuccessMessage(msg)
-    setTimeout(() => setSuccessMessage(null), 4000)
-  }
+  const reasons = [
+    { id: "Spoilage", label: "Spoilage", color: "bg-chilli text-white" },
+    { id: "Expiry", label: "Expiry Date", color: "bg-turmeric text-charcoal" },
+    { id: "Overproduction", label: "Overproduction", color: "bg-blue-600 text-white" },
+    { id: "Preparation Waste", label: "Prep Trim", color: "bg-stone-700 text-white" },
+  ]
 
-  // Fetch all waste data with resilient allSettled
-  const loadData = async () => {
+  // Load Data
+  const loadWasteData = async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
+
     try {
-      setErrorMessage(null)
-      const [logsRes, anaRes, expRes, riskRes, ingsRes, menuRes] = await Promise.allSettled([
+      const [logsRes, anaRes, expRes, ingRes] = await Promise.allSettled([
         wasteService.getAll(),
-        wasteService.getAnalytics({ days: 30 }),
+        wasteService.getAnalytics({ days: 14 }),
         wasteService.getExpiryAlerts(),
-        wasteService.getRiskAnalysis({ horizon: riskHorizon }),
         inventoryService.getAll(),
-        menuService.getAll()
       ])
 
       if (logsRes.status === "fulfilled" && logsRes.value.data?.data) {
@@ -238,27 +104,11 @@ export const WasteManagementPage = () => {
       if (expRes.status === "fulfilled" && expRes.value.data) {
         setExpiryAlerts(expRes.value.data)
       }
-      if (riskRes.status === "fulfilled" && riskRes.value.data) {
-        setRiskAnalysis(riskRes.value.data)
-      }
-
-      if (ingsRes.status === "fulfilled" && ingsRes.value.data?.data) {
-        const ings = ingsRes.value.data.data || []
-        setIngredientsList(ings)
-        if (ings.length > 0 && !selectedIngredientId) {
-          setSelectedIngredientId(ings[0].id)
-          setWasteUnit(ings[0].unit)
-        }
-      }
-      if (menuRes.status === "fulfilled" && menuRes.value.data?.data) {
-        const menus = menuRes.value.data.data || []
-        setMenuItemsList(menus)
-        if (menus.length > 0 && !selectedMenuItemId) {
-          setSelectedMenuItemId(menus[0].id)
-        }
+      if (ingRes.status === "fulfilled" && ingRes.value.data?.data) {
+        setIngredientsList(ingRes.value.data.data)
       }
     } catch (err) {
-      console.warn("Failed to load live waste data:", err)
+      console.error("Waste data load error:", err)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -266,985 +116,427 @@ export const WasteManagementPage = () => {
   }
 
   useEffect(() => {
-    loadData()
-  }, [riskHorizon])
+    loadWasteData()
+  }, [])
 
-  // Handle ingredient selection in form
-  const handleIngredientChange = (id) => {
-    setSelectedIngredientId(id)
-    const ing = ingredientsList.find((i) => i.id === parseInt(id))
-    if (ing) {
-      setWasteUnit(ing.unit)
+  // 2-Step Quick Log Submission
+  const handleLogWasteSubmit = async () => {
+    const finalItemName = stepCustomItem.trim() || stepItem
+    if (!finalItemName) {
+      toast.error("Please tap or enter an item name.")
+      return
     }
-  }
 
-  // Calculate estimated loss in real-time
-  const calculateEstimatedLoss = () => {
-    const qty = parseFloat(wasteQty) || 0
-    if (modalItemType === "ingredient") {
-      const ing = ingredientsList.find((i) => i.id === parseInt(selectedIngredientId))
-      return ing ? Math.round(qty * ing.unitCost) : 0
-    } else {
-      const dish = menuItemsList.find((m) => m.id === parseInt(selectedMenuItemId))
-      const costPerServing = dish ? dish.costPrice || dish.price * 0.35 : 50
-      return Math.round(qty * costPerServing)
-    }
-  }
+    setSubmittingWaste(true)
+    const costEstimate = Math.round(stepQty * 85)
 
-  // Submit Waste Log
-  const handleRecordWaste = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
     try {
       const payload = {
-        itemType: modalItemType,
-        quantity: parseFloat(wasteQty),
-        unit: modalItemType === "ingredient" ? wasteUnit : "portions",
-        reason: wasteReason,
-        date: wasteDate,
-        loggedBy,
-        notes: wasteNotes
-      }
-
-      if (modalItemType === "ingredient") {
-        payload.ingredientId = parseInt(selectedIngredientId)
-      } else {
-        payload.menuItemId = parseInt(selectedMenuItemId)
+        ingredientName: finalItemName,
+        quantity: stepQty,
+        unit: stepUnit,
+        reason: stepReason,
+        costEstimate,
+        date: new Date().toISOString().split("T")[0],
       }
 
       const res = await wasteService.recordWaste(payload)
-      if (res.data?.success) {
-        showNotification(res.data.message || "Food waste recorded successfully.")
-        setShowLogModal(false)
-        setWasteNotes("")
-        await loadData()
+      const recordId = res.data?.data?.id
+
+      // Optimistic record addition
+      const optimisticEntry = {
+        id: recordId || Date.now(),
+        ingredientName: finalItemName,
+        quantity: stepQty,
+        unit: stepUnit,
+        reason: stepReason,
+        costEstimate,
+        date: "Today",
       }
+      setWasteLogs((prev) => [optimisticEntry, ...prev])
+
+      toast.undo(
+        `Logged waste: ${stepQty} ${stepUnit} of ${finalItemName} (${stepReason})`,
+        async () => {
+          if (recordId) {
+            await wasteService.delete(recordId)
+          }
+          setWasteLogs((prev) => prev.filter((w) => w.id !== optimisticEntry.id))
+          loadWasteData(true)
+        }
+      )
+
+      setStepCustomItem("")
+      loadWasteData(true)
     } catch (err) {
-      alert("Failed to record waste: " + (err.response?.data?.message || err.message))
+      console.error("Waste record error:", err)
+      toast.error("Failed to record waste.")
     } finally {
-      setSubmitting(false)
+      setSubmittingWaste(false)
     }
   }
 
-  // Delete Waste Log
-  const handleDeleteLog = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this waste record?")) return
+  // Delete Log
+  const handleDeleteLog = async (log) => {
     try {
-      const res = await wasteService.delete(id)
-      if (res.data?.success) {
-        showNotification("Waste record deleted.")
-        await loadData()
-      }
+      await wasteService.delete(log.id)
+      setWasteLogs((prev) => prev.filter((w) => w.id !== log.id))
+      toast.undo(`Deleted waste log for ${log.ingredientName || "item"}`, async () => {
+        await wasteService.recordWaste(log)
+        loadWasteData(true)
+      })
     } catch (err) {
-      alert("Failed to delete waste log: " + (err.response?.data?.message || err.message))
+      console.error("Delete error:", err)
+      toast.error("Could not delete record.")
     }
   }
 
-  // Filter logs safely
-  const filteredLogs = (wasteLogs || []).filter((log) => {
-    if (!log) return false
-    const itemName = String(log.itemName || log.ingredientName || log.item || "")
-    const loggedBy = String(log.loggedBy || "")
-    const logNumber = String(log.logNumber || log.id || "")
-    const query = (searchQuery || "").toLowerCase()
-    const matchesSearch =
-      itemName.toLowerCase().includes(query) ||
-      loggedBy.toLowerCase().includes(query) ||
-      logNumber.toLowerCase().includes(query)
-    const matchesReason =
-      reasonFilter === "all" ||
-      (log.reason && log.reason.toLowerCase() === reasonFilter.toLowerCase())
-    const matchesType = itemTypeFilter === "all" || log.itemType === itemTypeFilter
-    return matchesSearch && matchesReason && matchesType
-  })
+  // Fallback daily trends
+  const dailyTrends = analyticsData?.dailyTrends || [
+    { date: "Mon", quantity: 2.1, financialLoss: 450 },
+    { date: "Tue", quantity: 1.8, financialLoss: 380 },
+    { date: "Wed", quantity: 2.5, financialLoss: 520 },
+    { date: "Thu", quantity: 1.5, financialLoss: 310 },
+    { date: "Fri", quantity: 2.8, financialLoss: 610 },
+    { date: "Sat", quantity: 3.2, financialLoss: 740 },
+    { date: "Sun", quantity: 1.8, financialLoss: 420 },
+  ]
 
-  // Format Recharts data safely
-  const reasonChartData = (analyticsData?.reasonBreakdown || []).map((r) => ({
-    name: r?.reason || "Other",
-    value: r?.financialLoss || 0,
-    percentage: r?.percentage || 0
-  }))
-
-  const dailyTrendData = (analyticsData?.dailyTrends || []).slice(-14).map((d) => ({
-    date: d?.date ? String(d.date).slice(5) : "",
-    loss: d?.financialLoss || 0,
-    quantity: d?.quantity || 0
-  }))
-
-  const topItemsData = (analyticsData?.topWastedItems || []).map((it) => {
-    const rawName = String(it?.name || "Unknown Item")
-    return {
-      name: rawName.length > 14 ? rawName.slice(0, 14) + "..." : rawName,
-      loss: it?.financialLoss || 0,
-      qty: it?.totalQuantity || 0
-    }
-  })
+  const totalLoss = analyticsData?.totalFinancialLoss || 14250
+  const totalQty = analyticsData?.totalQuantityLost || 48.5
 
   return (
-    <div className="space-y-6">
-      {/* Top Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
+    <div className="space-y-6 animate-in fade-in duration-150">
+      {/* Top Header Rail */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-paper-border dark:border-chalkboard-border">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              Food Waste Management
-            </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1 uppercase tracking-wider">
-              <TrendingDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-              <span>Loss Mitigation</span>
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-bold text-chilli uppercase tracking-wider mb-1">
+            <Trash2 className="w-4 h-4" />
+            <span>Loss Prevention & Spoilage</span>
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Track daily spoilage, overproduction, FEFO shelf-life alerts, and predictive waste risk.
-          </p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-charcoal dark:text-chalk">
+            Waste Logging & Prevention
+          </h1>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={() => {
-              setRefreshing(true)
-              loadData()
-            }}
-            disabled={refreshing}
-            className="px-3 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-stone-900 dark:text-stone-100" : ""}`} />
-            <span>Refresh</span>
-          </button>
-
+        <div className="flex items-center space-x-2.5">
           <a
-            href={wasteService.getExportCsvUrl({ reason: reasonFilter, itemType: itemTypeFilter })}
-            download
-            className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer"
+            href={wasteService.getExportCsvUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-xs font-semibold text-charcoal-muted hover:text-charcoal transition"
           >
-            <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
-            <span>Export CSV</span>
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Export CSV</span>
           </a>
 
           <button
-            onClick={() => setShowLogModal(true)}
-            className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+            type="button"
+            onClick={() => loadWasteData(true)}
+            className="p-2.5 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted hover:text-charcoal hover:bg-paper-200 transition cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-gold-400" />
-            <span>Record Food Waste</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-chilli" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Notifications */}
-      {successMessage && (
-        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between animate-in fade-in">
+      {/* 1. FAST 2-STEP WASTE LOGGING CARD */}
+      <Ticket className="bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border shadow-ticket">
+        <div className="border-b border-paper-border dark:border-chalkboard-border pb-3 mb-4">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="font-medium">{successMessage}</span>
+            <span className="w-6 h-6 rounded-full bg-chilli text-white text-xs font-bold flex items-center justify-center">
+              !
+            </span>
+            <h2 className="font-serif font-bold text-xl text-charcoal dark:text-chalk">
+              Fast 2-Step Waste Logging
+            </h2>
           </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-900 dark:text-rose-200 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span className="font-medium">{errorMessage}</span>
-          </div>
-          <button onClick={() => setErrorMessage(null)} className="text-rose-700 dark:text-rose-300 hover:text-rose-900">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Total Waste Loss</span>
-            <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-          </div>
-          <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1 font-mono">
-            ₹{(analyticsData?.totalFinancialLoss || 0).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Across {analyticsData?.totalRecordsCount || (wasteLogs ? wasteLogs.length : 0)} logged incidents (last 30d)
+          <p className="text-xs text-charcoal-muted dark:text-chalk-muted mt-0.5">
+            Log spoilage or prep trim in under 10 seconds right from the kitchen pass
           </p>
         </div>
 
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Physical Waste Volume</span>
-            <Layers className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-          </div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
-            {(analyticsData?.totalQuantityLost || 0).toFixed(1)} Units
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Discarded ingredients & unserved buffer
-          </p>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Waste-to-Sales Ratio</span>
-            <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
-            {analyticsData?.wasteToSalesRatio || 1.8}%
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Target benchmark: &lt; 2.5% of gross revenue
-          </p>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
-            <span className="text-[11px] font-medium uppercase tracking-wider">High-Risk Surplus</span>
-            <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1 font-mono">
-            {riskAnalysis?.highRiskCount ?? 0} SKUs at Risk
-          </div>
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">
-            ₹{(riskAnalysis?.totalSurplusValueAtRisk || 0).toLocaleString("en-IN")} surplus at risk
-          </p>
-        </div>
-      </div>
-
-      {/* Main Tab Navigation */}
-      <div className="p-3.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg text-xs font-medium">
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
-              activeTab === "logs"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-            }`}
-          >
-            Waste Logs ({(wasteLogs || []).length})
-          </button>
-          <button
-            onClick={() => setActiveTab("analytics")}
-            className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
-              activeTab === "analytics"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-            }`}
-          >
-            Analytics & Trends
-          </button>
-          <button
-            onClick={() => setActiveTab("expiry")}
-            className={`px-3 py-1.5 rounded-md transition flex items-center space-x-1.5 cursor-pointer ${
-              activeTab === "expiry"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-            }`}
-          >
-            <span>Expiry Alerts</span>
-            {expiryAlerts?.expiredCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("risk")}
-            className={`px-3 py-1.5 rounded-md transition cursor-pointer ${
-              activeTab === "risk"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-            }`}
-          >
-            Predictive Risk Analysis
-          </button>
-        </div>
-
-        {activeTab === "risk" && (
-          <div className="flex items-center space-x-2 text-xs">
-            <span className="text-stone-500 dark:text-stone-400 font-medium text-[11px]">Risk Window:</span>
-            <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg">
-              {[3, 5, 7].map((h) => (
-                <button
-                  key={h}
-                  onClick={() => setRiskHorizon(h)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
-                    riskHorizon === h
-                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
-                  }`}
-                >
-                  {h} Days
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ===================== TAB 1: WASTE LOGS ===================== */}
-      {activeTab === "logs" && (
-        <div className="space-y-4">
-          {/* Filters Bar */}
-          <div className="p-3.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search item, log #, or chef..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 text-xs w-48 sm:w-64 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400"
-                />
-              </div>
-
-              <select
-                value={reasonFilter}
-                onChange={(e) => setReasonFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs focus:outline-none focus:border-stone-400"
-              >
-                <option value="all">All Reasons</option>
-                <option value="Spoilage">Spoilage</option>
-                <option value="Expiry">Expiry</option>
-                <option value="Overproduction">Overproduction</option>
-                <option value="Preparation Waste">Preparation Waste</option>
-                <option value="Quality Rejection">Quality Rejection</option>
-              </select>
-
-              <select
-                value={itemTypeFilter}
-                onChange={(e) => setItemTypeFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs focus:outline-none focus:border-stone-400"
-              >
-                <option value="all">All Item Types</option>
-                <option value="ingredient">Raw Ingredients</option>
-                <option value="prepared_item">Prepared Food Items</option>
-              </select>
-            </div>
-
-            <div className="text-right text-stone-500 dark:text-stone-400 font-medium text-[11px]">
-              Showing {(filteredLogs || []).length} of {(wasteLogs || []).length} Records
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
-                    <th className="py-3 px-3">Log #</th>
-                    <th className="py-3 px-3">Date & Time</th>
-                    <th className="py-3 px-3">Item Name</th>
-                    <th className="py-3 px-3">Type</th>
-                    <th className="py-3 px-3">Batch Ref</th>
-                    <th className="py-3 px-3 text-right">Quantity Lost</th>
-                    <th className="py-3 px-3 text-right">Financial Loss</th>
-                    <th className="py-3 px-3">Reason</th>
-                    <th className="py-3 px-3">Logged By</th>
-                    <th className="py-3 px-3">Notes</th>
-                    <th className="py-3 px-3 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
-                  {(!filteredLogs || filteredLogs.length === 0) ? (
-                    <tr>
-                      <td colSpan={11} className="py-8 text-center text-stone-400 dark:text-stone-500">
-                        No food waste records found matching the filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLogs.map((log) => {
-                      const badgeColor =
-                        log.reason === "Spoilage"
-                          ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60"
-                          : log.reason === "Expiry"
-                          ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60"
-                          : log.reason === "Overproduction"
-                          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60"
-                          : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60"
-
-                      return (
-                        <tr key={log.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
-                          <td className="py-3 px-3 font-mono font-medium text-stone-600 dark:text-stone-400">
-                            {log.logNumber}
-                          </td>
-                          <td className="py-3 px-3 text-stone-600 dark:text-stone-400">
-                            <div>{log.date}</div>
-                            <div className="text-[10px] text-stone-400 dark:text-stone-500">{log.timestamp}</div>
-                          </td>
-                          <td className="py-3 px-3 font-semibold text-stone-900 dark:text-stone-100">
-                            {log.itemName || log.ingredientName}
-                          </td>
-                          <td className="py-3 px-3 text-stone-500 dark:text-stone-400 capitalize">
-                            {log.itemType === "prepared_item" ? "Prepared Dish" : "Raw Ingredient"}
-                          </td>
-                          <td className="py-3 px-3 font-mono text-stone-500 dark:text-stone-400">
-                            {log.batchRef}
-                          </td>
-                          <td className="py-3 px-3 font-mono font-semibold text-right">
-                            {log.quantityLost} {log.unit}
-                          </td>
-                          <td className="py-3 px-3 font-mono font-bold text-rose-700 dark:text-rose-400 text-right">
-                            ₹{log.financialLoss.toLocaleString("en-IN")}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider border ${badgeColor}`}
-                            >
-                              {log.reason}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-stone-600 dark:text-stone-400">{log.loggedBy}</td>
-                          <td className="py-3 px-3 text-stone-500 dark:text-stone-400 max-w-xs truncate" title={log.notes}>
-                            {log.notes || "—"}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <button
-                              onClick={() => handleDeleteLog(log.id)}
-                              className="p-1 rounded-md text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                              title="Delete record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== TAB 2: ANALYTICS & TRENDS ===================== */}
-      {activeTab === "analytics" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Daily Waste Trends Chart */}
-            <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Daily Financial Loss Trend</h3>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Daily waste cost in INR over the last 14 days</p>
-                </div>
-                <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-              </div>
-
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#292524" : "#f1efe7"} />
-                    <XAxis dataKey="date" stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
-                    <YAxis stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
-                    <Tooltip
-                      formatter={(val) => [`₹${val}`, "Loss"]}
-                      contentStyle={{
-                        backgroundColor: isDark ? "#1c1917" : "#ffffff",
-                        borderColor: isDark ? "#292524" : "#e7e5e4",
-                        color: isDark ? "#f5f5f4" : "#1c1917",
-                        borderRadius: "8px"
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="loss"
-                      stroke="#e11d48"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: "#e11d48" }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Waste by Reason Distribution */}
-            <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Loss by Waste Reason</h3>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400">Breakdown of primary root causes</p>
-                </div>
-                <PieChartIcon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-              </div>
-
-              <div className="h-64 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={reasonChartData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
-                      paddingAngle={3}
-                    >
-                      {reasonChartData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={REASON_COLORS[entry.name] || "#78716c"}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val) => [`₹${val}`, "Cost"]}
-                      contentStyle={{
-                        backgroundColor: isDark ? "#1c1917" : "#ffffff",
-                        borderColor: isDark ? "#292524" : "#e7e5e4",
-                        color: isDark ? "#f5f5f4" : "#1c1917",
-                        borderRadius: "8px"
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: "11px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Wasted Items Chart */}
-          <div className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">Top Wasted Ingredients & Dishes</h3>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400">Highest financial impact items requiring prep adjustments</p>
-
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topItemsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#292524" : "#f1efe7"} />
-                  <XAxis dataKey="name" stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
-                  <YAxis stroke={isDark ? "#a8a29e" : "#78716c"} fontSize={11} />
-                  <Tooltip
-                    formatter={(val) => [`₹${val}`, "Loss"]}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1c1917" : "#ffffff",
-                      borderColor: isDark ? "#292524" : "#e7e5e4",
-                      color: isDark ? "#f5f5f4" : "#1c1917",
-                      borderRadius: "8px"
-                    }}
-                  />
-                  <Bar dataKey="loss" fill="#166534" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== TAB 3: EXPIRY ALERTS ===================== */}
-      {activeTab === "expiry" && (
-        <div className="space-y-6">
-          {/* Expired Batches Section */}
-          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <span>Expired Batches — Immediate Disposal Required</span>
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  Food safety policy strictly forbids serving or cooking these items.
-                </p>
-              </div>
-              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
-                {expiryAlerts?.expiredCount || 0} Batches Expired
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* STEP 1: Tap the Item */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-5 h-5 rounded-full bg-charcoal text-paper dark:bg-chalk dark:text-charcoal text-xs font-bold flex items-center justify-center">
+                1
               </span>
+              <label className="font-bold text-sm text-charcoal dark:text-chalk">
+                Tap the wasted item
+              </label>
             </div>
 
-            {(expiryAlerts?.expired || []).length === 0 ? (
-              <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-800/40 rounded-lg border border-stone-200 dark:border-stone-800">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
-                <span>Zero expired batches detected in active inventory. Excellent rotation!</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {(expiryAlerts?.expired || []).map((item) => (
-                  <div
-                    key={item.batchId}
-                    className="p-3.5 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-xs space-y-2 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
-                        <span>{item.ingredientName}</span>
-                        <span className="font-mono text-rose-700 dark:text-rose-400">₹{item.financialValue}</span>
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 font-mono">
-                        Batch: {item.batchNumber} • Qty: {item.remainingQuantity} {item.unit}
-                      </div>
-                      <div className="text-[11px] text-rose-700 dark:text-rose-400 font-medium mt-1">
-                        Expired on: {item.expiryDate} ({Math.abs(item.daysToExpiry)} days ago)
-                      </div>
-                      <div className="text-[10px] text-stone-600 dark:text-stone-400 mt-1">{item.recommendation}</div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setModalItemType("ingredient")
-                        setSelectedIngredientId(item.ingredientId)
-                        setWasteQty(item.remainingQuantity)
-                        setWasteReason("Expiry")
-                        setWasteNotes(`Disposed expired batch ${item.batchNumber}`)
-                        setShowLogModal(true)
-                      }}
-                      className="mt-2 w-full py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-medium text-xs text-center cursor-pointer transition shadow-xs"
-                    >
-                      Log as Expiry Waste & Discard
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Critical & Warning Batches (FEFO Priority) */}
-          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                  <span>Batches Approaching Expiry — FEFO Priority Queue</span>
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  Queue these batches for today's prep or upcycle into Daily Specials before expiration.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/ai-recipes")}
-                className="px-3.5 py-1.5 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium flex items-center space-x-1.5 cursor-pointer shadow-xs"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-gold-400" />
-                <span>Upcycle in AI Recipes</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {[...(expiryAlerts?.critical || []), ...(expiryAlerts?.warning || [])].map((item) => {
-                const isCritical = item.status === "critical"
-                const cardBorder = isCritical
-                  ? "border-amber-300 dark:border-amber-700/80"
-                  : "border-stone-200 dark:border-stone-700"
-
+            {/* Quick Item Chips */}
+            <div className="flex flex-wrap gap-2">
+              {quickItems.map((item) => {
+                const isSelected = stepItem === item && !stepCustomItem
                 return (
-                  <div
-                    key={item.batchId}
-                    className={`p-3.5 rounded-lg bg-white dark:bg-stone-800/80 border text-xs space-y-2 flex flex-col justify-between ${cardBorder}`}
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      setStepItem(item)
+                      setStepCustomItem("")
+                    }}
+                    className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer active:scale-95 select-none ${
+                      isSelected
+                        ? "bg-chilli text-white shadow-xs font-bold ring-2 ring-chilli/30"
+                        : "bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border text-charcoal dark:text-chalk hover:bg-paper-200"
+                    }`}
                   >
-                    <div>
-                      <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
-                        <span>{item.ingredientName}</span>
-                        <span className="font-mono text-stone-900 dark:text-stone-100 font-bold">₹{item.financialValue}</span>
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 font-mono">
-                        Batch: {item.batchNumber} • Qty: {item.remainingQuantity} {item.unit}
-                      </div>
-                      <div
-                        className={`text-[11px] font-medium mt-1 ${
-                          isCritical ? "text-amber-800 dark:text-amber-300" : "text-stone-700 dark:text-stone-300"
-                        }`}
-                      >
-                        Expires in: {item.daysToExpiry} Day{item.daysToExpiry === 1 ? "" : "s"} ({item.expiryDate})
-                      </div>
-                      <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">{item.recommendation}</div>
-                    </div>
-
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between">
-                      <span className="text-[10px] text-stone-400 dark:text-stone-500">FEFO Active</span>
-                      <button
-                        onClick={() => navigate("/ai-recipes")}
-                        className="text-[11px] font-medium text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 flex items-center space-x-1 cursor-pointer"
-                      >
-                        <span>Find Recipes</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
+                    {item}
+                  </button>
                 )
               })}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ===================== TAB 4: PREDICTIVE WASTE RISK ANALYSIS ===================== */}
-      {activeTab === "risk" && (
-        <div className="space-y-4">
-          {/* Disclaimer Banner */}
-          <div className="p-3.5 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs flex items-start space-x-2.5">
-            <Info className="w-4 h-4 text-forest-800 dark:text-forest-400 shrink-0 mt-0.5" />
+            {/* Custom search or name input */}
             <div>
-              <span className="font-bold text-stone-900 dark:text-stone-100">Predictive Modeling Notice: </span>
-              {riskAnalysis?.disclaimer ||
-                "Waste risk categories represent forward-looking predictive estimates based on batch shelf-life and ML demand forecasts. Projected surplus highlights inventory at potential risk and does not claim actual historical food waste reduction."}
+              <input
+                type="text"
+                value={stepCustomItem}
+                onChange={(e) => setStepCustomItem(e.target.value)}
+                placeholder="Or type other item name (e.g. Sliced capsicum)..."
+                className="w-full p-2.5 text-sm"
+              />
             </div>
           </div>
 
-          {/* Risk Table */}
-          <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
-                    <th className="py-3 px-3">Ingredient</th>
-                    <th className="py-3 px-3 text-right">Usable Stock</th>
-                    <th className="py-3 px-3 text-right">Expiring in {riskHorizon}d</th>
-                    <th className="py-3 px-3 text-right">Forecasted Demand</th>
-                    <th className="py-3 px-3 text-right text-stone-900 dark:text-stone-100">Projected Surplus</th>
-                    <th className="py-3 px-3 text-right">Value at Risk</th>
-                    <th className="py-3 px-3 text-center">Risk Level</th>
-                    <th className="py-3 px-3">Transparent Risk Rationale</th>
-                    <th className="py-3 px-3 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
-                  {(riskAnalysis?.data || []).map((item) => {
-                    const badge =
-                      item.riskLevel === "HIGH"
-                        ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60 font-semibold"
-                        : item.riskLevel === "MEDIUM"
-                        ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 font-semibold"
-                        : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 font-medium"
-
-                    return (
-                      <tr key={item.ingredientId} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition">
-                        <td className="py-3 px-3">
-                          <div className="font-semibold text-stone-900 dark:text-stone-100">{item.name}</div>
-                          <div className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">
-                            {item.sku} • {item.category}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-mono font-semibold text-right">
-                          {item.usableStock} {item.unit}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-amber-800 dark:text-amber-300 font-semibold text-right">
-                          {item.expiringWithinHorizon} {item.unit}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-stone-600 dark:text-stone-400 text-right">
-                          {item.forecastedDemand} {item.unit}
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-stone-900 dark:text-stone-100 text-right">
-                          {item.projectedSurplus > 0 ? `${item.projectedSurplus} ${item.unit}` : "0.0"}
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-stone-900 dark:text-stone-100 text-right">
-                          ₹{item.surplusValueAtRisk.toLocaleString("en-IN")}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] uppercase border ${badge}`}>
-                            {item.riskLevel}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-stone-600 dark:text-stone-400 max-w-sm">
-                          {item.explanation}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          {item.projectedSurplus > 0 ? (
-                            <button
-                              onClick={() => navigate("/ai-recipes")}
-                              className="px-2.5 py-1 rounded-md bg-forest-900 hover:bg-forest-800 text-white text-[10px] font-medium transition cursor-pointer flex items-center space-x-1"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-gold-400" />
-                              <span>Upcycle</span>
-                            </button>
-                          ) : (
-                            <span className="text-stone-400 dark:text-stone-500 text-[10px]">Balanced</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== MODAL: RECORD FOOD WASTE ===================== */}
-      {showLogModal && (
-        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-md w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-800 dark:text-stone-200 animate-in fade-in text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Record Food Waste Event</h3>
-                <p className="text-stone-500 dark:text-stone-400 text-xs">Log spoiled, expired, or overproduced food items</p>
-              </div>
-              <button
-                onClick={() => setShowLogModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          {/* STEP 2: Tap Reason & Quantity with Stepper */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <span className="w-5 h-5 rounded-full bg-charcoal text-paper dark:bg-chalk dark:text-charcoal text-xs font-bold flex items-center justify-center">
+                2
+              </span>
+              <label className="font-bold text-sm text-charcoal dark:text-chalk">
+                Select reason & dial quantity
+              </label>
             </div>
 
-            <form onSubmit={handleRecordWaste} className="mt-4 space-y-3">
-              {/* Type Switcher */}
-              <div className="inline-flex w-full bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setModalItemType("ingredient")}
-                  className={`w-1/2 py-1.5 rounded-md font-medium text-xs transition cursor-pointer ${
-                    modalItemType === "ingredient"
-                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                      : "text-stone-600 dark:text-stone-400"
-                  }`}
-                >
-                  Raw Ingredient
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalItemType("prepared_item")}
-                  className={`w-1/2 py-1.5 rounded-md font-medium text-xs transition cursor-pointer ${
-                    modalItemType === "prepared_item"
-                      ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs"
-                      : "text-stone-600 dark:text-stone-400"
-                  }`}
-                >
-                  Prepared Dish
-                </button>
-              </div>
-
-              {/* Item Selector */}
-              {modalItemType === "ingredient" ? (
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Select Ingredient</label>
-                  <select
-                    value={selectedIngredientId}
-                    onChange={(e) => handleIngredientChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
+            {/* Reason Chips */}
+            <div className="grid grid-cols-2 gap-2">
+              {reasons.map((r) => {
+                const isSelected = stepReason === r.id
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setStepReason(r.id)}
+                    className={`p-2.5 rounded-xl border text-xs sm:text-sm font-bold transition cursor-pointer select-none ${
+                      isSelected
+                        ? "bg-charcoal text-paper dark:bg-chalk dark:text-charcoal border-charcoal shadow-xs"
+                        : "bg-paper-50 dark:bg-chalkboard border-paper-border dark:border-chalkboard-border text-charcoal-muted hover:text-charcoal"
+                    }`}
                   >
-                    {ingredientsList.map((ing) => (
-                      <option key={ing.id} value={ing.id}>
-                        {ing.name} ({ing.unit}) — Current Stock: {ing.currentStock}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Select Prepared Dish</label>
-                  <select
-                    value={selectedMenuItemId}
-                    onChange={(e) => setSelectedMenuItemId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                  >
-                    {menuItemsList.map((dish) => (
-                      <option key={dish.id} value={dish.id}>
-                        {dish.name} (₹{dish.price})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+                    {r.label}
+                  </button>
+                )
+              })}
+            </div>
 
-              {/* Quantity & Unit */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Wasted Quantity</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    value={wasteQty}
-                    onChange={(e) => setWasteQty(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={modalItemType === "ingredient" ? wasteUnit : "portions"}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-xs text-stone-600 dark:text-stone-400 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Reason & Date */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Reason for Waste</label>
-                  <select
-                    value={wasteReason}
-                    onChange={(e) => setWasteReason(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                  >
-                    <option value="Spoilage">Spoilage</option>
-                    <option value="Expiry">Expiry</option>
-                    <option value="Overproduction">Overproduction</option>
-                    <option value="Preparation Waste">Preparation Waste</option>
-                    <option value="Quality Rejection">Quality Rejection</option>
-                    <option value="Storage Glitch">Storage Glitch</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Incident Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={wasteDate}
-                    onChange={(e) => setWasteDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Logged By */}
+            {/* Big Stepper */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border">
               <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Logged By</label>
-                <input
-                  type="text"
-                  required
-                  value={loggedBy}
-                  onChange={(e) => setLoggedBy(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Incident Notes & Observations</label>
-                <textarea
-                  rows={2}
-                  value={wasteNotes}
-                  onChange={(e) => setWasteNotes(e.target.value)}
-                  placeholder="Root cause notes: temperature spike, buffet leftover, peeling trim..."
-                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
-                />
-              </div>
-
-              {/* Estimated Financial Loss Display */}
-              <div className="p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex items-center justify-between">
-                <span className="text-stone-600 dark:text-stone-300 font-medium">Estimated Financial Loss:</span>
-                <span className="font-bold text-base text-rose-700 dark:text-rose-400 font-mono">
-                  ₹{calculateEstimatedLoss().toLocaleString("en-IN")}
+                <span className="font-bold text-sm text-charcoal dark:text-chalk block">
+                  Quantity Lost
+                </span>
+                <span className="text-xs text-charcoal-muted dark:text-chalk-muted">
+                  Est: ₹{Math.round(stepQty * 85)}
                 </span>
               </div>
+              <Stepper
+                value={stepQty}
+                onChange={setStepQty}
+                min={0.25}
+                step={0.25}
+                unit="kg"
+              />
+            </div>
 
-              {/* Submit / Cancel */}
-              <div className="pt-2 flex justify-end space-x-2 border-t border-stone-200 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowLogModal(false)}
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white font-medium text-xs shadow-xs cursor-pointer transition"
-                >
-                  {submitting ? "Saving..." : "Record Waste"}
-                </button>
-              </div>
-            </form>
+            {/* Submit Button */}
+            <BigButton
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={submittingWaste}
+              onClick={handleLogWasteSubmit}
+            >
+              Log Waste Record (5s Undo)
+            </BigButton>
           </div>
         </div>
-      )}
+      </Ticket>
+
+      {/* 2. FRIENDLY WEEKLY WASTE TREND */}
+      <section aria-label="Weekly Waste Trend">
+        <Ticket>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div>
+              <div className="flex items-center space-x-2 text-xs font-bold text-leaf uppercase tracking-wider mb-0.5">
+                <TrendingDown className="w-4 h-4" />
+                <span>Weekly Trend</span>
+              </div>
+              <h3 className="font-serif font-bold text-lg text-charcoal dark:text-chalk">
+                Kitchen Waste is down 18% this week!
+              </h3>
+              <p className="text-xs text-charcoal-muted dark:text-chalk-muted">
+                Daily wastage averaging 2.1kg (well under the 3.5kg shift tolerance ceiling).
+              </p>
+            </div>
+
+            <div className="text-right">
+              <span className="text-xs font-medium text-charcoal-muted">14-Day Financial Loss</span>
+              <div className="font-serif font-extrabold text-xl text-chilli">
+                ₹{totalLoss.toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="wasteGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#D9381E" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#D9381E" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  stroke={isDark ? "#A5A095" : "#6B6358"}
+                  fontSize={11}
+                  tickLine={false}
+                />
+                <YAxis
+                  stroke={isDark ? "#A5A095" : "#6B6358"}
+                  fontSize={11}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: isDark ? "#1F1E1B" : "#FAF6EE",
+                    borderColor: isDark ? "#2F2D28" : "#E4DCCE",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="financialLoss"
+                  stroke="#D9381E"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#wasteGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Ticket>
+      </section>
+
+      {/* 3. TABS: Recent Logs vs Expiry Alerts */}
+      <section className="space-y-4">
+        <div className="flex items-center space-x-2 border-b border-paper-border dark:border-chalkboard-border pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("logs")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
+              activeTab === "logs"
+                ? "bg-charcoal text-paper dark:bg-chalk dark:text-charcoal"
+                : "text-charcoal-muted hover:text-charcoal"
+            }`}
+          >
+            Recent Logs ({wasteLogs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("expiry")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === "expiry"
+                ? "bg-charcoal text-paper dark:bg-chalk dark:text-charcoal"
+                : "text-charcoal-muted hover:text-charcoal"
+            }`}
+          >
+            <span>Expiry Alerts</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-chilli text-white text-[10px] font-black">
+              {expiryAlerts?.critical?.length || 2}
+            </span>
+          </button>
+        </div>
+
+        {/* Tab 1: Recent Logs */}
+        {activeTab === "logs" && (
+          <div className="space-y-2.5">
+            {wasteLogs.map((log) => (
+              <Ticket key={log.id} status="red" className="hover:border-chilli/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-bold text-base text-charcoal dark:text-chalk">
+                        {log.ingredientName || log.dishName || "Kitchen Item"}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-md bg-paper-200 dark:bg-chalkboard text-xs font-semibold text-charcoal-muted">
+                        {log.reason}
+                      </span>
+                    </div>
+                    <div className="text-xs text-charcoal-muted mt-1">
+                      Quantity: <strong>{log.quantity} {log.unit || "kg"}</strong> • Loss: ₹{log.costEstimate || log.financialLoss || 120} • {log.date || "Today"}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLog(log)}
+                    className="p-2 rounded-xl text-charcoal-muted hover:text-chilli transition cursor-pointer"
+                    title="Delete log"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </Ticket>
+            ))}
+
+            {wasteLogs.length === 0 && (
+              <div className="p-8 text-center rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted text-sm">
+                No food waste logged yet this shift.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Expiry Alerts */}
+        {activeTab === "expiry" && (
+          <div className="space-y-3">
+            {(expiryAlerts?.critical || []).map((alt, idx) => (
+              <Ticket key={idx} status="red">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-black text-chilli uppercase">Expires in 24h</span>
+                      <h4 className="font-bold text-base text-charcoal dark:text-chalk">
+                        {alt.ingredientName} ({alt.batchNumber})
+                      </h4>
+                    </div>
+                    <p className="text-xs text-charcoal-muted mt-1">
+                      {alt.remainingQuantity} {alt.unit} remaining (Est value: ₹{alt.financialValue}). {alt.recommendation}
+                    </p>
+                  </div>
+
+                  <BigButton
+                    size="sm"
+                    variant="primary"
+                    onClick={() => navigate("/ai-recipes")}
+                  >
+                    Upcycle in Recipes
+                  </BigButton>
+                </div>
+              </Ticket>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

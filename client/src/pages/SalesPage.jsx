@@ -2,103 +2,102 @@ import React, { useState, useEffect, useRef } from "react"
 import {
   Receipt,
   Search,
-  Filter,
   Plus,
-  ArrowUpRight,
-  CreditCard,
-  QrCode,
-  Banknote,
-  Clock,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  X,
-  ChefHat,
   Trash2,
   Edit2,
   Upload,
   Download,
   RefreshCw,
-  Loader2,
-  FileSpreadsheet
+  CheckCircle2,
+  AlertCircle,
+  X,
+  CreditCard,
+  QrCode,
+  Banknote,
+  UtensilsCrossed,
+  Clock,
+  Printer,
+  ChevronRight,
+  ListOrdered,
+  LayoutGrid
 } from "lucide-react"
+
 import { salesService, menuService } from "../services/api"
+import { useTheme } from "../context/ThemeContext"
+import { useToast } from "../context/ToastContext"
+import { Ticket } from "../components/ui/Ticket"
+import { BigButton } from "../components/ui/BigButton"
+import { Stepper } from "../components/ui/Stepper"
+import { FilterChip } from "../components/ui/FilterChip"
+import { BottomSheet } from "../components/ui/BottomSheet"
+import { StatNumber } from "../components/ui/StatNumber"
 
 export const SalesPage = () => {
-  // Data state
+  const { isDark } = useTheme()
+  const toast = useToast()
+
+  // Mode: "pos" (Tap-first POS Pad) or "history" (Order Log / Receipts)
+  const [viewMode, setViewMode] = useState("pos")
+
+  // Data
   const [sales, setSales] = useState([])
   const [menuItems, setMenuItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-  const [successMsg, setSuccessMsg] = useState(null)
 
-  // Aggregates from backend
+  // Aggregates
   const [totalCount, setTotalCount] = useState(0)
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [totalPortions, setTotalPortions] = useState(0)
   const [averageTicket, setAverageTicket] = useState(0)
 
-  // Filters
-  const [period, setPeriod] = useState("all") // daily, weekly, monthly, all
-  const [selectedMenuItem, setSelectedMenuItem] = useState("all")
-  const [selectedChannel, setSelectedChannel] = useState("all")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
+  // POS Pad Current Ticket State
+  const [posCategory, setPosCategory] = useState("all")
+  const [posSearch, setPosSearch] = useState("")
+  const [currentTicketItems, setCurrentTicketItems] = useState([])
+  const [ticketChannel, setTicketChannel] = useState("Dine-in")
+  const [ticketTable, setTicketTable] = useState("Table 1")
+  const [ticketPayment, setTicketPayment] = useState("UPI")
+  const [ticketCustomer, setTicketCustomer] = useState("Walk-in Guest")
+  const [ticketNotes, setTicketNotes] = useState("")
+
+  // History Filters
+  const [historyPeriod, setHistoryPeriod] = useState("all")
+  const [historyChannel, setHistoryChannel] = useState("all")
+  const [historySearch, setHistorySearch] = useState("")
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null)
 
   // Modals
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
   const [showCsvModal, setShowCsvModal] = useState(false)
-  const [orderToDelete, setOrderToDelete] = useState(null)
-  const [editingOrder, setEditingOrder] = useState(null)
-
-  // Add / Edit Order Form State
-  const [formSalesDate, setFormSalesDate] = useState(new Date().toISOString().split("T")[0])
-  const [formChannel, setFormChannel] = useState("Dine-in")
-  const [formTable, setFormTable] = useState("Table 1")
-  const [formCustomer, setFormCustomer] = useState("Walk-in Guest")
-  const [formPayment, setFormPayment] = useState("UPI")
-  const [formStatus, setFormStatus] = useState("completed")
-  const [formNotes, setFormNotes] = useState("")
-  const [formItems, setFormItems] = useState([])
-
-  // CSV File upload state
   const [csvFile, setCsvFile] = useState(null)
-  const [csvResult, setCsvResult] = useState(null)
+  const [csvUploading, setCsvUploading] = useState(false)
   const fileInputRef = useRef(null)
 
-  // 1. Fetch menu items for dropdown selectors
+  // Fetch Menu Items
   useEffect(() => {
-    menuService.getAll().then((res) => {
-      if (res.data?.success) {
-        setMenuItems(res.data.data || [])
-      }
-    }).catch(console.error)
+    menuService
+      .getAll()
+      .then((res) => {
+        if (res.data?.success) {
+          setMenuItems(res.data.data || [])
+        }
+      })
+      .catch((err) => console.error("Menu load error:", err))
   }, [])
 
-  // 2. Fetch sales with active filters
+  // Fetch Sales
   const fetchSales = async (silent = false) => {
     if (!silent) setLoading(true)
     else setRefreshing(true)
     setError(null)
 
     try {
-      const params = {
-        limit: 150,
-      }
-      if (period !== "all") params.period = period
-      if (selectedMenuItem !== "all") params.menuItemId = selectedMenuItem
-      if (selectedChannel !== "all") params.channel = selectedChannel
-      if (selectedStatus !== "all") params.status = selectedStatus
-      if (startDate) params.startDate = startDate
-      if (endDate) params.endDate = endDate
-      if (searchQuery.trim()) params.search = searchQuery.trim()
+      const params = { limit: 100 }
+      if (historyPeriod !== "all") params.period = historyPeriod
+      if (historyChannel !== "all") params.channel = historyChannel
+      if (historySearch.trim()) params.search = historySearch.trim()
 
       const res = await salesService.getAll(params)
       if (res.data?.success) {
@@ -107,12 +106,10 @@ export const SalesPage = () => {
         setTotalRevenue(res.data.totalRevenue || 0)
         setTotalPortions(res.data.totalPortions || 0)
         setAverageTicket(res.data.averageTicketSize || 0)
-      } else {
-        setError(res.data?.message || "Failed to load sales data.")
       }
     } catch (err) {
       console.error("Sales fetch error:", err)
-      setError(err.response?.data?.message || "Failed to connect to sales service.")
+      setError("Failed to connect to sales records.")
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -121,90 +118,75 @@ export const SalesPage = () => {
 
   useEffect(() => {
     fetchSales()
-  }, [period, selectedMenuItem, selectedChannel, selectedStatus, startDate, endDate])
+  }, [historyPeriod, historyChannel])
 
-  // Debounced search
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchSales(true)
-    }, 350)
-    return () => clearTimeout(handler)
-  }, [searchQuery])
-
-  // Auto-dismiss alert
-  useEffect(() => {
-    if (successMsg) {
-      const t = setTimeout(() => setSuccessMsg(null), 4500)
-      return () => clearTimeout(t)
-    }
-  }, [successMsg])
-
-  // Open New Order Modal
-  const handleOpenAddModal = () => {
-    setFormSalesDate(new Date().toISOString().split("T")[0])
-    setFormChannel("Dine-in")
-    setFormTable("Table 1")
-    setFormCustomer("Walk-in Guest")
-    setFormPayment("UPI")
-    setFormNotes("")
-    if (menuItems.length > 0) {
-      setFormItems([{ menuItemId: menuItems[0].id, quantity: 1 }])
-    } else {
-      setFormItems([])
-    }
-    setShowAddModal(true)
-  }
-
-  // Add Item to Order Form
-  const handleAddItemToForm = (menuItemId) => {
-    setFormItems((prev) => {
-      const existing = prev.find((i) => i.menuItemId === menuItemId)
+  // POS Item Handlers
+  const handleAddItemToTicket = (dish) => {
+    setCurrentTicketItems((prev) => {
+      const existing = prev.find((item) => item.menuItemId === dish.id)
       if (existing) {
-        return prev.map((i) =>
-          i.menuItemId === menuItemId ? { ...i, quantity: i.quantity + 1 } : i
+        return prev.map((item) =>
+          item.menuItemId === dish.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         )
       }
-      return [...prev, { menuItemId, quantity: 1 }]
+      return [
+        ...prev,
+        {
+          menuItemId: dish.id,
+          name: dish.name,
+          price: dish.price,
+          quantity: 1,
+          isVeg: dish.isVeg,
+        },
+      ]
     })
   }
 
-  const handleUpdateItemQty = (menuItemId, qty) => {
+  const handleUpdateTicketQty = (menuItemId, qty) => {
     if (qty <= 0) {
-      setFormItems((prev) => prev.filter((i) => i.menuItemId !== menuItemId))
+      setCurrentTicketItems((prev) => prev.filter((it) => it.menuItemId !== menuItemId))
     } else {
-      setFormItems((prev) =>
-        prev.map((i) => (i.menuItemId === menuItemId ? { ...i, quantity: qty } : i))
+      setCurrentTicketItems((prev) =>
+        prev.map((it) => (it.menuItemId === menuItemId ? { ...it, quantity: qty } : it))
       )
     }
   }
 
-  // Calculate Subtotal & Totals for Add Form
-  const formSubtotal = formItems.reduce((sum, item) => {
-    const itemData = menuItems.find((m) => m.id === item.menuItemId)
-    return sum + (itemData ? itemData.price * item.quantity : 0)
-  }, 0)
-  const formTax = Math.round(formSubtotal * 0.05 * 100) / 100
-  const formGrandTotal = Math.round((formSubtotal + formTax) * 100) / 100
+  const handleClearTicket = () => {
+    if (currentTicketItems.length === 0) return
+    const backup = [...currentTicketItems]
+    setCurrentTicketItems([])
+    toast.undo("Order ticket cleared", () => {
+      setCurrentTicketItems(backup)
+    })
+  }
 
-  // Submit New Daily Sale
-  const handleCreateSale = async (e) => {
-    e.preventDefault()
-    if (formItems.length === 0) {
-      setError("Please add at least one dish to the sales order.")
+  // Calculate Ticket Totals
+  const ticketSubtotal = currentTicketItems.reduce(
+    (sum, it) => sum + it.price * it.quantity,
+    0
+  )
+  const ticketTax = Math.round(ticketSubtotal * 0.05 * 100) / 100
+  const ticketGrandTotal = Math.round((ticketSubtotal + ticketTax) * 100) / 100
+
+  // Complete and Submit POS Sale
+  const handleCompleteSale = async () => {
+    if (currentTicketItems.length === 0) {
+      toast.error("Please tap a dish to add to the order ticket.")
       return
     }
 
     setSubmitting(true)
-    setError(null)
-
     const payload = {
-      salesDate: formSalesDate,
-      channel: formChannel,
-      tableNumber: formChannel === "Dine-in" ? formTable : "",
-      customerName: formCustomer || "Walk-in Guest",
-      paymentMethod: formPayment,
-      notes: formNotes,
-      items: formItems.map((it) => ({
+      salesDate: new Date().toISOString().split("T")[0],
+      channel: ticketChannel,
+      tableNumber: ticketChannel === "Dine-in" ? ticketTable : "",
+      customerName: ticketCustomer || "Walk-in Guest",
+      paymentMethod: ticketPayment,
+      notes: ticketNotes,
+      items: currentTicketItems.map((it) => ({
         menuItemId: it.menuItemId,
         quantity: it.quantity,
       })),
@@ -213,1107 +195,533 @@ export const SalesPage = () => {
     try {
       const res = await salesService.create(payload)
       if (res.data?.success) {
-        setSuccessMsg(
-          `Order ${res.data.data?.orderNumber || "New Order"} added successfully! Raw ingredients deducted via FEFO.`
+        const orderNum = res.data.data?.orderNumber || "Order"
+        const savedItems = [...currentTicketItems]
+        const orderId = res.data.data?.id
+
+        setCurrentTicketItems([])
+        toast.undo(
+          `Logged sale #${orderNum} (₹${ticketGrandTotal}). Stock deducted via FEFO.`,
+          async () => {
+            if (orderId) {
+              await salesService.delete(orderId)
+              setCurrentTicketItems(savedItems)
+              fetchSales(true)
+            }
+          }
         )
-        setShowAddModal(false)
         fetchSales(true)
       }
     } catch (err) {
-      console.error("Failed to create sale:", err)
-      setError(err.response?.data?.message || "Failed to record sales order.")
+      console.error("Sale submission error:", err)
+      toast.error(err.response?.data?.message || "Failed to process sale.")
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Open Edit Order Modal
-  const handleOpenEditModal = (order) => {
-    setEditingOrder(order)
-    setFormSalesDate(order.date || new Date().toISOString().split("T")[0])
-    setFormChannel(order.channel || "Dine-in")
-    setFormTable(order.tableNumber || "")
-    setFormCustomer(order.customerName || "Walk-in Guest")
-    setFormPayment(order.paymentMethod || "UPI")
-    setFormStatus(order.status || "completed")
-    setFormNotes(order.notes || "")
-    setFormItems(
-      order.items?.map((it) => ({
-        menuItemId: it.menuItemId,
-        quantity: it.quantity,
-      })) || []
-    )
-    setShowEditModal(true)
-  }
-
-  // Submit Edit Sale
-  const handleUpdateSale = async (e) => {
+  // Handle CSV Import
+  const handleCsvUpload = async (e) => {
     e.preventDefault()
-    if (!editingOrder) return
-
-    setSubmitting(true)
-    setError(null)
-
-    const payload = {
-      salesDate: formSalesDate,
-      channel: formChannel,
-      tableNumber: formChannel === "Dine-in" ? formTable : "",
-      customerName: formCustomer,
-      paymentMethod: formPayment,
-      status: formStatus,
-      notes: formNotes,
-      items: formItems.map((it) => ({
-        menuItemId: it.menuItemId,
-        quantity: it.quantity,
-      })),
-    }
-
-    try {
-      const res = await salesService.update(editingOrder.id, payload)
-      if (res.data?.success) {
-        setSuccessMsg(`Sale order ${editingOrder.orderNumber} updated successfully.`)
-        setShowEditModal(false)
-        if (selectedOrder && selectedOrder.id === editingOrder.id) {
-          setSelectedOrder(res.data.data)
-        }
-        fetchSales(true)
-      }
-    } catch (err) {
-      console.error("Update sale error:", err)
-      setError(err.response?.data?.message || "Failed to update sale record.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // Delete Sale
-  const handleConfirmDelete = async () => {
-    if (!orderToDelete) return
-    setSubmitting(true)
-
-    try {
-      const res = await salesService.delete(orderToDelete.id)
-      if (res.data?.success) {
-        setSuccessMsg(`Sale ${orderToDelete.orderNumber} deleted successfully.`)
-        setOrderToDelete(null)
-        if (selectedOrder && selectedOrder.id === orderToDelete.id) {
-          setSelectedOrder(null)
-        }
-        setSales((prev) => prev.filter((s) => s.id !== orderToDelete.id))
-        fetchSales(true)
-      }
-    } catch (err) {
-      console.error("Delete sale error:", err)
-      setError(err.response?.data?.message || "Failed to delete sale order.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // CSV Upload handler
-  const handleUploadCsv = async (e) => {
-    e.preventDefault()
-    if (!csvFile) {
-      setError("Please select a valid CSV file to upload.")
-      return
-    }
-
-    setSubmitting(true)
-    setError(null)
-    setCsvResult(null)
-
+    if (!csvFile) return
+    setCsvUploading(true)
     const formData = new FormData()
     formData.append("file", csvFile)
 
     try {
       const res = await salesService.uploadCsv(formData)
       if (res.data?.success) {
-        setCsvResult(res.data.data)
-        setSuccessMsg(
-          `Imported ${res.data.data?.ordersImported || 0} sales orders from CSV successfully!`
-        )
+        toast.success(`Successfully imported ${res.data.importedCount || "batch"} sales!`)
+        setShowCsvModal(false)
+        setCsvFile(null)
         fetchSales(true)
       }
     } catch (err) {
       console.error("CSV upload error:", err)
-      setError(err.response?.data?.message || "CSV processing failed. Check column headers.")
+      toast.error("Failed to parse sales CSV file.")
     } finally {
-      setSubmitting(false)
+      setCsvUploading(false)
     }
   }
 
-  // Download Sample CSV
-  const handleDownloadSampleCsv = () => {
-    const csvContent =
-      "date,item_name,quantity,channel,table_number,customer_name,payment_method\n" +
-      "2026-11-13,Gujarati Thali,2,Dine-in,Table 4,Bhavin Shah,UPI\n" +
-      "2026-11-13,Paneer Butter Masala,1,Dine-in,Table 4,Bhavin Shah,UPI\n" +
-      "2026-11-13,Dosa,3,Takeaway,,Pooja Mehta,Cash\n" +
-      "2026-11-13,Tea,4,Dine-in,Table 2,Aarav Joshi,UPI\n" +
-      "2026-11-12,Vegetable Pulao,2,Online,,Online Delivery,Card\n" +
-      "2026-11-12,Sandwich,2,Takeaway,,Walk-in Guest,Cash\n" +
-      "2026-11-12,Coffee,2,Dine-in,Table 6,Kiran Desai,UPI\n"
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", "sample_canteen_sales.csv")
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  // Delete Order with Undo
+  const handleDeleteOrder = (order) => {
+    salesService
+      .delete(order.id)
+      .then(() => {
+        setSales((prev) => prev.filter((o) => o.id !== order.id))
+        toast.undo(`Deleted order #${order.orderNumber || order.id}`, async () => {
+          await salesService.create(order)
+          fetchSales(true)
+        })
+      })
+      .catch((err) => {
+        console.error("Delete order error:", err)
+        toast.error("Could not delete order.")
+      })
   }
 
+  // Category Filtering for POS Pad
+  const categories = ["all", ...new Set(menuItems.map((m) => m.category || "Mains"))]
+
+  const filteredDishes = menuItems.filter((dish) => {
+    const matchesCat = posCategory === "all" || dish.category === posCategory
+    const matchesSearch =
+      !posSearch.trim() ||
+      dish.name.toLowerCase().includes(posSearch.toLowerCase())
+    return matchesCat && matchesSearch
+  })
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-stone-200 dark:border-stone-800">
+    <div className="space-y-6 animate-in fade-in duration-150">
+      {/* Top Header Rail: Switch between POS Pad & Order History */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-paper-border dark:border-chalkboard-border">
         <div>
-          <div className="flex items-center space-x-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              Sales & POS Management
-            </h1>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
-              Live SQLite POS
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-bold text-chilli uppercase tracking-wider mb-1">
+            <Receipt className="w-4 h-4" />
+            <span>Counter & Table Billing</span>
           </div>
-          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5">
-            Real-time dining and takeaway transactions, CSV sales import, and automated FEFO ingredient deductions.
-          </p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-charcoal dark:text-chalk">
+            Sell (Sales & POS)
+          </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* View Switcher & Import/Export */}
+        <div className="flex items-center space-x-2.5 flex-wrap">
+          {/* POS vs History Toggle */}
+          <div className="flex items-center p-1 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border">
+            <button
+              type="button"
+              onClick={() => setViewMode("pos")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                viewMode === "pos"
+                  ? "bg-chilli text-white shadow-xs"
+                  : "text-charcoal-muted dark:text-chalk-muted hover:text-charcoal"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>POS Pad</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("history")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                viewMode === "history"
+                  ? "bg-chilli text-white shadow-xs"
+                  : "text-charcoal-muted dark:text-chalk-muted hover:text-charcoal"
+              }`}
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+              <span>Order Log ({sales.length})</span>
+            </button>
+          </div>
+
+          {/* Small Import CSV Button */}
           <button
+            type="button"
+            onClick={() => setShowCsvModal(true)}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-xs font-semibold text-charcoal-muted dark:text-chalk-muted hover:text-charcoal hover:bg-paper-200 transition cursor-pointer"
+            title="Import Sales CSV"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => fetchSales(true)}
-            disabled={refreshing}
-            className="p-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1 cursor-pointer shadow-xs"
-            title="Refresh from Database"
+            className="p-2 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted dark:text-chalk-muted hover:text-charcoal hover:bg-paper-200 transition cursor-pointer"
+            title="Refresh"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setCsvFile(null)
-              setCsvResult(null)
-              setShowCsvModal(true)
-            }}
-            className="px-3.5 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
-          >
-            <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-            <span>Upload CSV</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddModal}
-            className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Order</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-chilli" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Notifications */}
-      {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
-          <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="font-medium">{successMsg}</span>
-          </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs flex items-center justify-between animate-in fade-in">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span className="font-medium">{error}</span>
-          </div>
-          <button onClick={() => setError(null)} className="text-rose-700 dark:text-rose-300 hover:opacity-75 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Filtered Orders</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">{totalCount}</div>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
-            {sales.filter((o) => o.status === "completed").length} Completed in current view
-          </p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Total Sales Turnover</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
-            ₹{totalRevenue.toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Net gross receipts (inc. GST)</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Average Ticket Size</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
-            ₹{averageTicket.toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Per dining transaction</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">Total Portions Served</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1.5 font-mono">
-            {totalPortions}
-            <span className="text-xs font-normal text-stone-500 dark:text-stone-400 ml-1.5">dishes</span>
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Prepared and dispatched</p>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3 shadow-xs">
-        {/* Row 1: Search & Period Tabs */}
-        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search by Order #, Customer, Table #, or Dish name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-1.5 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none"
-            />
-          </div>
-
-          {/* Period Selector Tabs */}
-          <div className="inline-flex items-center p-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-xs">
-            {[
-              { id: "all", label: "All History" },
-              { id: "daily", label: "Today" },
-              { id: "weekly", label: "7 Days" },
-              { id: "monthly", label: "30 Days" },
-            ].map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setPeriod(p.id)
-                  setStartDate("")
-                  setEndDate("")
-                }}
-                className={`px-3 py-1 rounded text-xs font-medium transition cursor-pointer ${
-                  period === p.id
-                    ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold"
-                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2: Secondary Dropdown Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs pt-2 border-t border-stone-100 dark:border-stone-800">
-          {/* Menu Item Filter */}
-          <div>
-            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
-              Filter by Dish:
-            </label>
-            <select
-              value={selectedMenuItem}
-              onChange={(e) => setSelectedMenuItem(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-            >
-              <option value="all">All Menu Dishes</option>
-              {menuItems.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Channel Filter */}
-          <div>
-            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
-              Sales Channel:
-            </label>
-            <select
-              value={selectedChannel}
-              onChange={(e) => setSelectedChannel(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-            >
-              <option value="all">All Channels</option>
-              <option value="Dine-in">Dine-in</option>
-              <option value="Takeaway">Takeaway</option>
-              <option value="Online">Online Delivery</option>
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
-              From Date:
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value)
-                setPeriod("all")
-              }}
-              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label className="block text-[11px] font-medium text-stone-500 dark:text-stone-400 mb-1">
-              To Date:
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value)
-                setPeriod("all")
-              }}
-              className="w-full px-2.5 py-1.5 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Orders Data Table */}
-      <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden shadow-xs">
-        {loading ? (
-          <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
-            <Loader2 className="w-6 h-6 text-stone-400 animate-spin" />
-            <p className="text-xs text-stone-500 dark:text-stone-400">Loading sales records...</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
-                  <th className="py-3 px-4">Order #</th>
-                  <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4">Channel & Table</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Items Summary</th>
-                  <th className="py-3 px-4">Payment</th>
-                  <th className="py-3 px-4 text-right">Total Amount</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
-                {sales.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-stone-400 dark:text-stone-500">
-                      No sales records found matching your filter criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  sales.map((ord) => (
-                    <tr key={ord.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/50 transition-colors">
-                      <td className="py-2.5 px-4 font-mono font-medium text-stone-900 dark:text-stone-100">
-                        {ord.orderNumber}
-                      </td>
-                      <td className="py-2.5 px-4 text-stone-500 dark:text-stone-400 font-mono text-[11px]">
-                        <div>{ord.date}</div>
-                        <div className="text-stone-400 dark:text-stone-500">{ord.time}</div>
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className="font-medium text-stone-900 dark:text-stone-100">{ord.channel}</span>
-                        {ord.tableNumber && (
-                          <span className="ml-1 text-stone-500 dark:text-stone-400 text-[11px]">({ord.tableNumber})</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4 text-stone-700 dark:text-stone-300">{ord.customerName}</td>
-                      <td className="py-2.5 px-4 max-w-xs truncate text-stone-600 dark:text-stone-400">
-                        {ord.items && ord.items.length > 0
-                          ? ord.items.map((i) => `${i.quantity}x ${i.name}`).join(", ")
-                          : "No dishes"}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className="inline-flex items-center space-x-1 font-mono text-[11px] bg-stone-50 dark:bg-stone-800 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300">
-                          {ord.paymentMethod === "UPI" ? (
-                            <QrCode className="w-3 h-3 text-stone-500" />
-                          ) : ord.paymentMethod === "Cash" ? (
-                            <Banknote className="w-3 h-3 text-stone-500" />
-                          ) : (
-                            <CreditCard className="w-3 h-3 text-stone-500" />
-                          )}
-                          <span>{ord.paymentMethod}</span>
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right font-mono font-bold text-stone-900 dark:text-stone-100">
-                        ₹{(ord.totalAmount || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider ${
-                            ord.status === "completed"
-                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                              : ord.status === "in-kitchen"
-                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                              : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                          }`}
-                        >
-                          {ord.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => setSelectedOrder(ord)}
-                          className="px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition inline-flex items-center space-x-1 cursor-pointer"
-                          title="Inspect Order Bill"
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>View</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(ord)}
-                          className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-                          title="Edit Sale"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setOrderToDelete(ord)}
-                          className="p-1 rounded text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Order Details Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
-                  Order Details — {selectedOrder.orderNumber}
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  {selectedOrder.date} • {selectedOrder.time} • {selectedOrder.channel}{" "}
-                  {selectedOrder.tableNumber ? `(${selectedOrder.tableNumber})` : ""}
-                </p>
+      {/* VIEW MODE 1: TAP-FIRST POS PAD */}
+      {viewMode === "pos" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT 7-8 COLS: Dish Tile Grid with Category Filters */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+            {/* Search + Category chips */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-charcoal-muted dark:text-chalk-muted" />
+                <input
+                  type="text"
+                  value={posSearch}
+                  onChange={(e) => setPosSearch(e.target.value)}
+                  placeholder="Quick search dish by name..."
+                  className="w-full pl-10 pr-4 py-2.5 text-base"
+                />
               </div>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Category Pills */}
+              <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                {categories.map((cat) => (
+                  <FilterChip
+                    key={cat}
+                    label={cat === "all" ? "All Dishes" : cat}
+                    active={posCategory === cat}
+                    onClick={() => setPosCategory(cat)}
+                  />
+                ))}
+              </div>
             </div>
 
-            <div className="mt-4 space-y-4">
-              <div className="bg-stone-50 dark:bg-stone-800/70 p-3 rounded-lg border border-stone-200 dark:border-stone-700 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-stone-500 dark:text-stone-400">Customer:</span>
-                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedOrder.customerName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-stone-500 dark:text-stone-400">Payment Mode:</span>
-                  <span className="font-semibold text-stone-900 dark:text-stone-100">{selectedOrder.paymentMethod}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-stone-500 dark:text-stone-400">Status:</span>
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-400 capitalize">{selectedOrder.status}</span>
-                </div>
-                {selectedOrder.notes && (
-                  <div className="flex justify-between pt-1 border-t border-stone-200 dark:border-stone-700">
-                    <span className="text-stone-500 dark:text-stone-400">Notes:</span>
-                    <span className="text-stone-800 dark:text-stone-200 italic">{selectedOrder.notes}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Items List */}
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
-                  Ordered Dishes
-                </h4>
-                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden text-xs">
-                  {selectedOrder.items?.map((it, idx) => (
-                    <div key={idx} className="p-2.5 flex items-center justify-between bg-white dark:bg-stone-900">
-                      <div>
-                        <span className="font-semibold text-stone-900 dark:text-stone-100">{it.name}</span>
-                        <span className="text-stone-400 dark:text-stone-500 ml-2">x {it.quantity}</span>
-                      </div>
-                      <span className="font-bold font-mono text-stone-900 dark:text-stone-100">₹{it.subtotal}</span>
+            {/* Dish Tiles Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredDishes.map((dish) => {
+                const inTicket = currentTicketItems.find((it) => it.menuItemId === dish.id)
+                return (
+                  <button
+                    key={dish.id}
+                    type="button"
+                    onClick={() => handleAddItemToTicket(dish)}
+                    className={`relative flex flex-col justify-between p-4 rounded-2xl border text-left transition-all duration-150 cursor-pointer select-none active:scale-95 min-h-[120px] shadow-ticket ${
+                      inTicket
+                        ? "bg-paper-100 dark:bg-chalkboard border-chilli ring-2 ring-chilli/40"
+                        : "bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border hover:border-chilli/50"
+                    }`}
+                  >
+                    {/* veg/non-veg dot */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={`w-3 h-3 rounded-full border-2 ${
+                          dish.isVeg
+                            ? "border-leaf bg-leaf/20"
+                            : "border-chilli bg-chilli/20"
+                        }`}
+                        title={dish.isVeg ? "Vegetarian" : "Non-Veg"}
+                      />
+                      {inTicket && (
+                        <span className="px-2 py-0.5 rounded-full bg-chilli text-white font-bold text-xs">
+                          {inTicket.quantity}x
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Bill totals */}
-              <div className="bg-stone-50 dark:bg-stone-800/50 p-3 rounded-lg space-y-1.5 text-xs border border-stone-200 dark:border-stone-700">
-                <div className="flex justify-between text-stone-600 dark:text-stone-400">
-                  <span>Subtotal:</span>
-                  <span className="font-mono">₹{selectedOrder.subtotal}</span>
-                </div>
-                <div className="flex justify-between text-stone-600 dark:text-stone-400">
-                  <span>GST (5%):</span>
-                  <span className="font-mono">₹{selectedOrder.tax}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm text-stone-900 dark:text-stone-100 pt-1.5 border-t border-stone-200 dark:border-stone-700">
-                  <span>Grand Total:</span>
-                  <span className="font-mono text-emerald-700 dark:text-emerald-400">₹{selectedOrder.totalAmount}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">
-                <div className="font-semibold flex items-center space-x-1">
-                  <ChefHat className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>FEFO Inventory Decrement:</span>
-                </div>
-                <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
-                  Ingredients deduced according to Bill of Materials from the earliest expiring active batches.
-                </p>
-              </div>
+                    <div>
+                      <h3 className="font-bold text-sm sm:text-base text-charcoal dark:text-chalk line-clamp-2 leading-snug">
+                        {dish.name}
+                      </h3>
+                      <div className="mt-1 font-serif font-extrabold text-base text-chilli">
+                        ₹{dish.price || 240}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="mt-5 pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedOrder(null)
-                  handleOpenEditModal(selectedOrder)
-                }}
-                className="px-3 py-1.5 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium flex items-center space-x-1 cursor-pointer"
-              >
-                <Edit2 className="w-3 h-3" />
-                <span>Edit This Order</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-1.5 rounded-md bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
+            {filteredDishes.length === 0 && (
+              <div className="p-8 text-center rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted dark:text-chalk-muted text-sm">
+                No matching dishes found in this category.
+              </div>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* New POS Order / Daily Sale Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-xl w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Add Daily Sale / POS Order</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Record dining or takeaway bill with automatic FEFO stock decrement
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSale} className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    Sales Date <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formSalesDate}
-                    onChange={(e) => setFormSalesDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  />
+          {/* RIGHT 4-5 COLS: "The Order Ticket" Rail */}
+          <div className="lg:col-span-5 xl:col-span-4 sticky top-20">
+            <Ticket className="space-y-4 bg-white dark:bg-chalkboard-card">
+              {/* Ticket Top Rail */}
+              <div className="flex items-center justify-between border-b border-paper-border dark:border-chalkboard-border pb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="font-serif font-bold text-lg text-charcoal dark:text-chalk">
+                    Current Order Ticket
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-paper-200 dark:bg-chalkboard text-xs font-bold text-charcoal-muted dark:text-chalk-muted">
+                    {currentTicketItems.reduce((s, it) => s + it.quantity, 0)} items
+                  </span>
                 </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Channel</label>
-                  <select
-                    value={formChannel}
-                    onChange={(e) => setFormChannel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
+                {currentTicketItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearTicket}
+                    className="text-xs font-semibold text-chilli hover:underline cursor-pointer"
                   >
-                    <option value="Dine-in">Dine-in</option>
-                    <option value="Takeaway">Takeaway</option>
-                    <option value="Online">Online Delivery</option>
-                  </select>
-                </div>
+                    Clear Ticket
+                  </button>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">
-                    {formChannel === "Dine-in" ? "Table Number" : "Token / Pickup"}
-                  </label>
-                  <input
-                    type="text"
-                    value={formTable}
-                    onChange={(e) => setFormTable(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                    placeholder="e.g. Table 4"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Customer Name</label>
-                  <input
-                    type="text"
-                    value={formCustomer}
-                    onChange={(e) => setFormCustomer(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                    placeholder="Walk-in Guest"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Payment Method</label>
-                  <select
-                    value={formPayment}
-                    onChange={(e) => setFormPayment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="UPI">UPI / QR</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Card">Card</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Notes / Instructions</label>
-                  <input
-                    type="text"
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                    placeholder="Less spicy, extra pickle..."
-                  />
-                </div>
-              </div>
-
-              {/* Dish Selection Grid */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
-                  Select Dishes to Add
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50/60 dark:bg-stone-800/40">
-                  {menuItems.map((dish) => (
+              {/* Channel & Table Selector */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex p-1 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border text-xs">
+                  {["Dine-in", "Takeaway"].map((ch) => (
                     <button
+                      key={ch}
                       type="button"
-                      key={dish.id}
-                      onClick={() => handleAddItemToForm(dish.id)}
-                      className="p-2 text-left rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-emerald-600 dark:hover:border-emerald-500 text-xs transition cursor-pointer"
+                      onClick={() => setTicketChannel(ch)}
+                      className={`flex-1 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                        ticketChannel === ch
+                          ? "bg-white dark:bg-chalkboard-card text-charcoal dark:text-chalk shadow-xs"
+                          : "text-charcoal-muted dark:text-chalk-muted"
+                      }`}
                     >
-                      <div className="font-semibold text-stone-900 dark:text-stone-100 truncate">{dish.name}</div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">₹{dish.price}</div>
+                      {ch}
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {/* Order Basket */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
-                  Order Basket ({formItems.length} items)
-                </label>
-                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden text-xs max-h-40 overflow-y-auto">
-                  {formItems.length === 0 ? (
-                    <div className="p-4 text-center text-stone-400 dark:text-stone-500">
-                      No dishes added to this order yet. Click a dish above.
-                    </div>
-                  ) : (
-                    formItems.map((sel) => {
-                      const dish = menuItems.find((m) => m.id === sel.menuItemId)
-                      return (
-                        <div key={sel.menuItemId} className="p-2.5 flex items-center justify-between bg-white dark:bg-stone-900">
-                          <span className="font-medium text-stone-800 dark:text-stone-200 truncate pr-2">{dish?.name || "Dish"}</span>
-                          <div className="flex items-center space-x-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity - 1)}
-                              className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
-                            >
-                              -
-                            </button>
-                            <span className="font-mono font-bold w-5 text-center">{sel.quantity}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity + 1)}
-                              className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
-                            >
-                              +
-                            </button>
-                            <span className="font-mono font-bold w-16 text-right">
-                              ₹{((dish?.price || 0) * sel.quantity).toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
+                {ticketChannel === "Dine-in" ? (
+                  <select
+                    value={ticketTable}
+                    onChange={(e) => setTicketTable(e.target.value)}
+                    className="p-2 text-xs font-semibold"
+                  >
+                    {["Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "VIP Booth"].map(
+                      (tbl) => (
+                        <option key={tbl} value={tbl}>
+                          {tbl}
+                        </option>
                       )
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Total Calculation */}
-              <div className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-lg space-y-1 text-xs">
-                <div className="flex justify-between text-stone-600 dark:text-stone-400">
-                  <span>Subtotal:</span>
-                  <span className="font-mono">₹{formSubtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-stone-600 dark:text-stone-400">
-                  <span>GST (5%):</span>
-                  <span className="font-mono">₹{formTax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm text-stone-900 dark:text-stone-100 pt-1 border-t border-stone-200 dark:border-stone-700">
-                  <span>Grand Total:</span>
-                  <span className="font-mono text-emerald-700 dark:text-emerald-400">₹{formGrandTotal.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || formItems.length === 0}
-                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Confirm & Save Sale</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Order Modal */}
-      {showEditModal && editingOrder && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
-                  Edit Sale Order — {editingOrder.orderNumber}
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Modify customer, date, status, or dishes</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSale} className="mt-4 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Sales Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={formSalesDate}
-                    onChange={(e) => setFormSalesDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Status</label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="completed">Completed</option>
-                    <option value="in-kitchen">In-Kitchen</option>
-                    <option value="cancelled">Cancelled</option>
+                    )}
                   </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Channel</label>
-                  <select
-                    value={formChannel}
-                    onChange={(e) => setFormChannel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="Dine-in">Dine-in</option>
-                    <option value="Takeaway">Takeaway</option>
-                    <option value="Online">Online Delivery</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Table / Token</label>
+                ) : (
                   <input
                     type="text"
-                    value={formTable}
-                    onChange={(e) => setFormTable(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
+                    value={ticketCustomer}
+                    onChange={(e) => setTicketCustomer(e.target.value)}
+                    placeholder="Guest Name"
+                    className="p-2 text-xs font-medium"
                   />
-                </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Customer</label>
-                  <input
-                    type="text"
-                    value={formCustomer}
-                    onChange={(e) => setFormCustomer(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-600 dark:text-stone-400 mb-1">Payment Method</label>
-                  <select
-                    value={formPayment}
-                    onChange={(e) => setFormPayment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="UPI">UPI / QR</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Card">Card</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Order Basket */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
-                  Edit Dishes
-                </label>
-                <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
-                  {formItems.map((sel) => {
-                    const dish = menuItems.find((m) => m.id === sel.menuItemId)
-                    return (
-                      <div key={sel.menuItemId} className="p-2 flex items-center justify-between bg-white dark:bg-stone-900">
-                        <span className="font-medium text-stone-800 dark:text-stone-200">{dish?.name || "Dish"}</span>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity - 1)}
-                            className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="font-mono font-bold w-5 text-center">{sel.quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateItemQty(sel.menuItemId, sel.quantity + 1)}
-                            className="w-6 h-6 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-bold cursor-pointer"
-                          >
-                            +
-                          </button>
+              {/* Ticket Items List */}
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                {currentTicketItems.length === 0 ? (
+                  <div className="p-8 text-center border-2 border-dashed border-paper-border dark:border-chalkboard-border rounded-xl text-charcoal-muted dark:text-chalk-muted text-xs">
+                    Tap dishes on the left to add items to this ticket.
+                  </div>
+                ) : (
+                  currentTicketItems.map((item) => (
+                    <div
+                      key={item.menuItemId}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-paper-50 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold text-sm text-charcoal dark:text-chalk truncate">
+                          {item.name}
+                        </div>
+                        <div className="text-xs text-charcoal-muted dark:text-chalk-muted">
+                          ₹{item.price} each • Sub: ₹{item.price * item.quantity}
                         </div>
                       </div>
+
+                      <Stepper
+                        value={item.quantity}
+                        onChange={(q) => handleUpdateTicketQty(item.menuItemId, q)}
+                        min={0}
+                        max={50}
+                        size="default"
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Payment Method Selector */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-charcoal-muted dark:text-chalk-muted mb-1.5">
+                  Payment Method
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "UPI", label: "UPI", icon: QrCode },
+                    { id: "Card", label: "Card", icon: CreditCard },
+                    { id: "Cash", label: "Cash", icon: Banknote },
+                  ].map((pay) => {
+                    const Icon = pay.icon
+                    const isSelected = ticketPayment === pay.id
+                    return (
+                      <button
+                        key={pay.id}
+                        type="button"
+                        onClick={() => setTicketPayment(pay.id)}
+                        className={`flex items-center justify-center space-x-1.5 py-2 px-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                          isSelected
+                            ? "bg-charcoal text-paper dark:bg-chalk dark:text-charcoal border-charcoal font-black shadow-xs"
+                            : "bg-paper-50 dark:bg-chalkboard border-paper-border dark:border-chalkboard-border text-charcoal-muted dark:text-chalk-muted hover:text-charcoal"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{pay.label}</span>
+                      </button>
                     )
                   })}
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Save Changes</span>
-                </button>
+              {/* Ticket Perforated Divider */}
+              <div className="ticket-edge pt-3 space-y-1.5 text-xs text-charcoal-muted dark:text-chalk-muted">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-semibold text-charcoal dark:text-chalk">
+                    ₹{ticketSubtotal.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST (5%)</span>
+                  <span className="font-semibold text-charcoal dark:text-chalk">
+                    ₹{ticketTax.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between font-serif font-extrabold text-xl text-charcoal dark:text-chalk pt-1">
+                  <span>Grand Total</span>
+                  <span className="text-chilli">₹{ticketGrandTotal.toLocaleString()}</span>
+                </div>
               </div>
-            </form>
+
+              {/* Primary Complete Sale Button */}
+              <BigButton
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={currentTicketItems.length === 0}
+                loading={submitting}
+                onClick={handleCompleteSale}
+              >
+                Complete & Bill (₹{ticketGrandTotal})
+              </BigButton>
+            </Ticket>
           </div>
         </div>
       )}
 
-      {/* CSV Upload Modal */}
-      {showCsvModal && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div className="flex items-center space-x-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Upload Sales CSV</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCsvModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* VIEW MODE 2: ORDER HISTORY LOG */}
+      {viewMode === "history" && (
+        <div className="space-y-4">
+          {/* Quick Stats Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatNumber label="Total Orders" value={totalCount} />
+            <StatNumber label="Gross Revenue" prefix="₹" value={totalRevenue.toLocaleString()} />
+            <StatNumber label="Total Portions" value={totalPortions} />
+            <StatNumber label="Average Ticket" prefix="₹" value={averageTicket} />
+          </div>
+
+          {/* History Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-charcoal-muted" />
+              <input
+                type="text"
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Search orders by customer or receipt #..."
+                className="w-full pl-10 pr-4 py-2.5 text-base"
+              />
             </div>
-
-            <form onSubmit={handleUploadCsv} className="mt-4 space-y-4 text-xs">
-              <p className="text-stone-600 dark:text-stone-400">
-                Bulk import sales history directly into SQLite. The system validates dates, dish names against
-                the canteen catalog, and processes recipe stock deductions.
-              </p>
-
-              {/* Download Sample */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
-                <div>
-                  <div className="font-semibold text-stone-800 dark:text-stone-200">Need a valid template?</div>
-                  <div className="text-[11px] text-stone-500 dark:text-stone-400">Columns: date, item_name, quantity, channel, payment_method</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleCsv}
-                  className="px-3 py-1.5 rounded-md bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 font-medium flex items-center space-x-1 text-[11px] cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Sample</span>
-                </button>
-              </div>
-
-              {/* File Dropzone */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-stone-300 dark:border-stone-700 rounded-lg p-6 text-center hover:border-emerald-600 dark:hover:border-emerald-500 cursor-pointer transition bg-stone-50/50 dark:bg-stone-800/40"
+            <div className="flex items-center space-x-2">
+              <select
+                value={historyPeriod}
+                onChange={(e) => setHistoryPeriod(e.target.value)}
+                className="p-2.5 text-sm"
               >
-                <Upload className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                {csvFile ? (
-                  <div>
-                    <span className="font-bold text-emerald-700 dark:text-emerald-400">{csvFile.name}</span>
-                    <span className="text-stone-500 dark:text-stone-400 block text-[11px]">
-                      {(csvFile.size / 1024).toFixed(1)} KB — Ready to import
-                    </span>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="font-medium text-stone-800 dark:text-stone-200">Click to select CSV file</span>
-                    <span className="text-stone-400 dark:text-stone-500 block text-[11px] mt-0.5">Supports UTF-8 .csv files</span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".csv"
-                  className="hidden"
-                  onChange={(e) => setCsvFile(e.target.files[0] || null)}
-                />
-              </div>
+                <option value="all">All Shifts</option>
+                <option value="today">Today's Shift</option>
+                <option value="weekly">This Week</option>
+                <option value="monthly">This Month</option>
+              </select>
+            </div>
+          </div>
 
-              {/* Result Summary */}
-              {csvResult && (
-                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 space-y-1">
-                  <div className="font-bold flex items-center space-x-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span>Import Completed Successfully!</span>
+          {/* Orders List as Tickets */}
+          <div className="space-y-2.5">
+            {sales.map((order) => (
+              <Ticket
+                key={order.id}
+                status={order.status === "completed" ? "green" : "yellow"}
+                className="hover:border-chilli/30"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-2 flex-wrap">
+                      <span className="font-bold text-base text-charcoal dark:text-chalk">
+                        Order #{order.orderNumber || order.id}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-paper-200 dark:bg-chalkboard text-xs font-semibold text-charcoal-muted dark:text-chalk-muted">
+                        {order.channel || "Dine-in"} {order.tableNumber && `• ${order.tableNumber}`}
+                      </span>
+                      <span className="text-xs text-charcoal-muted dark:text-chalk-muted">
+                        {order.paymentMethod || "UPI"}
+                      </span>
+                    </div>
+
+                    <div className="text-xs sm:text-sm text-charcoal-muted dark:text-chalk-muted mt-1">
+                      Guest: <strong className="text-charcoal dark:text-chalk">{order.customerName || "Walk-in Guest"}</strong> • {order.items?.length || 1} dishes ordered
+                    </div>
                   </div>
-                  <div className="text-[11px]">
-                    Orders Imported: <strong>{csvResult.ordersImported}</strong> | Total Sales Value:{" "}
-                    <strong>₹{csvResult.totalSalesAmount}</strong>
+
+                  <div className="flex items-center justify-between sm:justify-end space-x-4">
+                    <div className="text-right">
+                      <div className="font-serif font-extrabold text-lg text-chilli">
+                        ₹{(order.totalAmount || 0).toLocaleString()}
+                      </div>
+                      <div className="text-[11px] text-charcoal-muted dark:text-chalk-muted">
+                        {order.date || "Today"}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(order)}
+                      className="p-2 rounded-xl text-charcoal-muted hover:text-chilli hover:bg-chilli-light dark:hover:bg-chilli-darkLight transition cursor-pointer"
+                      title="Delete order"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              )}
+              </Ticket>
+            ))}
 
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowCsvModal(false)}
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !csvFile}
-                  className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium shadow-xs disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Upload & Import</span>
-                </button>
+            {sales.length === 0 && (
+              <div className="p-8 text-center rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted text-sm">
+                No sales orders logged in this view.
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {orderToDelete && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-sm w-full border border-stone-200 dark:border-stone-800 shadow-xl p-5 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <h3 className="font-bold text-base text-rose-700 dark:text-rose-400">Delete Sale Order</h3>
-            <p className="text-xs text-stone-600 dark:text-stone-400 mt-2">
-              Are you sure you want to delete order{" "}
-              <strong className="text-stone-900 dark:text-stone-100 font-mono">"{orderToDelete.orderNumber}"</strong>?
-              This record will be permanently deleted from the SQLite database.
+      {/* CSV IMPORT BOTTOM SHEET */}
+      <BottomSheet
+        isOpen={showCsvModal}
+        onClose={() => setShowCsvModal(false)}
+        title="Import Sales Orders (CSV)"
+        subtitle="Bulk upload offline POS receipts"
+      >
+        <form onSubmit={handleCsvUpload} className="space-y-4">
+          <div className="p-6 border-2 border-dashed border-paper-border dark:border-chalkboard-border rounded-2xl text-center">
+            <Upload className="w-8 h-8 mx-auto text-charcoal-muted mb-2" />
+            <p className="text-sm font-semibold text-charcoal dark:text-chalk">
+              Select or drop your sales CSV file here
             </p>
-
-            <div className="flex justify-end space-x-2 mt-5">
-              <button
-                type="button"
-                onClick={() => setOrderToDelete(null)}
-                disabled={submitting}
-                className="px-4 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={submitting}
-                className="px-4 py-2 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium flex items-center space-x-1 cursor-pointer"
-              >
-                {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Delete Permanently</span>
-              </button>
-            </div>
+            <p className="text-xs text-charcoal-muted mt-1">
+              Supports standard POS export formats (date, item, qty, price)
+            </p>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv"
+              onChange={(e) => setCsvFile(e.target.files[0])}
+              className="mt-4 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-chilli file:text-white hover:file:bg-chilli-hover"
+            />
           </div>
-        </div>
-      )}
+
+          <BigButton
+            type="submit"
+            variant="primary"
+            fullWidth
+            loading={csvUploading}
+            disabled={!csvFile}
+          >
+            Process & Upload CSV
+          </BigButton>
+        </form>
+      </BottomSheet>
     </div>
   )
 }

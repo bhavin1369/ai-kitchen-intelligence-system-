@@ -1,31 +1,38 @@
 import React, { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   Boxes,
   Search,
-  Filter,
   Plus,
   AlertTriangle,
   Clock,
   CheckCircle2,
   AlertCircle,
-  Calendar,
+  RefreshCw,
+  TrendingDown,
   Layers,
   ArrowUpDown,
   X,
-  ChevronRight,
-  ShieldAlert,
-  RefreshCw,
-  Loader2,
-  SlidersHorizontal,
   History,
-  TrendingDown,
-  FileText
+  ShoppingBag,
+  Trash2,
+  Check,
+  ChevronRight
 } from "lucide-react"
-import { inventoryService } from "../services/api"
-import { useSearchParams } from "react-router-dom"
+
+import { inventoryService, wasteService } from "../services/api"
+import { useToast } from "../context/ToastContext"
+import { Ticket } from "../components/ui/Ticket"
+import { BigButton } from "../components/ui/BigButton"
+import { Stepper } from "../components/ui/Stepper"
+import { FilterChip } from "../components/ui/FilterChip"
+import { BottomSheet } from "../components/ui/BottomSheet"
+import { StatNumber } from "../components/ui/StatNumber"
 
 export const InventoryPage = () => {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const toast = useToast()
 
   // State
   const [items, setItems] = useState([])
@@ -35,29 +42,17 @@ export const InventoryPage = () => {
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState(null)
-  const [successMsg, setSuccessMsg] = useState(null)
-
-  // Filters & Tabs
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState(() => {
-    const tabParam = searchParams.get("tab")
-    if (tabParam === "ingredients") return "inventory"
-    return tabParam && ["inventory", "batches", "movements"].includes(tabParam)
-      ? tabParam
-      : "inventory"
-  })
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [urgencyFilter, setUrgencyFilter] = useState("all") // "all" | "today" | "week" | "fine"
+  const [activeTab, setActiveTab] = useState("stock") // "stock" | "batches" | "movements"
 
   // Modals
-  const [selectedIngredientForBatches, setSelectedIngredientForBatches] = useState(null)
   const [showReceiveModal, setShowReceiveModal] = useState(false)
-  const [showConsumeModal, setShowConsumeModal] = useState(false)
   const [showAdjustModal, setShowAdjustModal] = useState(false)
+  const [selectedItemForAction, setSelectedItemForAction] = useState(null)
 
-  // Receive Batch Form State
+  // Receive Form
   const [formIngredientId, setFormIngredientId] = useState("")
   const [formBatchNumber, setFormBatchNumber] = useState("")
   const [formBatchQty, setFormBatchQty] = useState(10)
@@ -66,38 +61,38 @@ export const InventoryPage = () => {
     new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0]
   )
   const [formSupplier, setFormSupplier] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
-  // Consume / Stock Issuance Form State
-  const [consumeIngId, setConsumeIngId] = useState("")
-  const [consumeQty, setConsumeQty] = useState(2)
-  const [consumeReason, setConsumeReason] = useState("kitchen_prep")
-
-  // Stock Adjustment Form State
-  const [adjustIngId, setAdjustIngId] = useState("")
+  // Adjust Form
   const [adjustNewStock, setAdjustNewStock] = useState(0)
-  const [adjustNotes, setAdjustNotes] = useState("Physical stock take count")
 
-  // Fetch Inventory Data from Backend
+  // Load Inventory Data
   const loadInventoryData = async (silent = false) => {
     if (!silent) setLoading(true)
     else setRefreshing(true)
-    setError(null)
 
     try {
-      const [ingRes, batchRes, movRes, dashRes] = await Promise.all([
+      const [ingRes, batchRes, movRes, dashRes] = await Promise.allSettled([
         inventoryService.getIngredients({ limit: 100 }),
         inventoryService.getBatches({ limit: 100 }),
         inventoryService.getMovements({ limit: 50 }),
         inventoryService.getDashboard(),
       ])
 
-      if (ingRes.data?.success) setItems(ingRes.data.data || [])
-      if (batchRes.data?.success) setBatches(batchRes.data.data || [])
-      if (movRes.data?.success) setMovements(movRes.data.data || [])
-      if (dashRes.data?.success) setDashboardMetrics(dashRes.data)
+      if (ingRes.status === "fulfilled" && ingRes.value.data?.success) {
+        setItems(ingRes.value.data.data || [])
+      }
+      if (batchRes.status === "fulfilled" && batchRes.value.data?.success) {
+        setBatches(batchRes.value.data.data || [])
+      }
+      if (movRes.status === "fulfilled" && movRes.value.data?.success) {
+        setMovements(movRes.value.data.data || [])
+      }
+      if (dashRes.status === "fulfilled" && dashRes.value.data?.success) {
+        setDashboardMetrics(dashRes.value.data)
+      }
     } catch (err) {
       console.error("Inventory load error:", err)
-      setError(err.response?.data?.message || "Failed to load inventory data from server.")
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -108,38 +103,89 @@ export const InventoryPage = () => {
     loadInventoryData()
   }, [])
 
-  // Auto-dismiss alert
-  useEffect(() => {
-    if (successMsg) {
-      const t = setTimeout(() => setSuccessMsg(null), 4500)
-      return () => clearTimeout(t)
+  // Calculate Urgency for each item based on near-expiry batches and current stock vs par
+  const getItemUrgency = (item) => {
+    const itemBatches = batches.filter((b) => b.ingredientId === item.id)
+    const hasCriticalBatch = itemBatches.some(
+      (b) => b.shelfLifeStatus === "critical" || (b.daysToExpiry !== undefined && b.daysToExpiry <= 1)
+    )
+    if (hasCriticalBatch || (item.daysLeft !== undefined && item.daysLeft <= 1)) {
+      return "today" // Red
     }
-  }, [successMsg])
 
-  // Extract Categories
-  const categories = ["all", "Produce", "Dairy", "Grains & Staples", "Spices", "Oils & Ghee", "Snacks", "Beverages"]
+    const hasWarningBatch = itemBatches.some(
+      (b) => b.shelfLifeStatus === "warning" || (b.daysToExpiry !== undefined && b.daysToExpiry <= 4)
+    )
+    const isBelowPar = item.currentStock <= item.reorderPoint
+    if (hasWarningBatch || isBelowPar || (item.daysLeft !== undefined && item.daysLeft <= 4)) {
+      return "week" // Yellow
+    }
 
-  // Filtered Inventory Items
-  const filteredItems = items.filter((item) => {
-    const matchesCat =
-      selectedCategory === "all" ||
-      (item.category && item.category.toLowerCase() === selectedCategory.toLowerCase())
-    const matchesSearch =
-      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.preferredSupplier && item.preferredSupplier.toLowerCase().includes(searchQuery.toLowerCase()))
+    return "fine" // Green
+  }
 
-    let matchesStatus = true
-    if (statusFilter === "low") matchesStatus = item.currentStock <= item.reorderPoint
-    if (statusFilter === "normal") matchesStatus = item.currentStock > item.reorderPoint
-    if (statusFilter === "out") matchesStatus = item.currentStock <= 0.001
+  // Fast Quick Action: USE STOCK (1kg/portion) with 5-second Undo
+  const handleQuickUse = async (item) => {
+    const useQty = Math.min(item.currentStock, 1)
+    if (useQty <= 0) {
+      toast.error(`${item.name} is out of stock!`)
+      return
+    }
 
-    return matchesCat && matchesSearch && matchesStatus
-  })
+    try {
+      await inventoryService.consumeStock({
+        ingredientId: item.id,
+        quantity: useQty,
+        reason: "kitchen_prep",
+      })
 
-  // Open Receive Batch Modal
-  const handleOpenReceiveModal = (prefillIngredient = null) => {
-    const target = prefillIngredient || items[0]
+      // Optimistic update
+      setItems((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, currentStock: Math.max(0, it.currentStock - useQty) } : it))
+      )
+
+      toast.undo(`Used ${useQty} ${item.unit || "kg"} ${item.name}`, async () => {
+        await inventoryService.adjustStock({
+          ingredientId: item.id,
+          newStock: item.currentStock,
+          notes: "Undo quick use",
+        })
+        loadInventoryData(true)
+      })
+    } catch (err) {
+      console.error("Quick use failed:", err)
+      toast.error("Could not record usage.")
+    }
+  }
+
+  // Fast Quick Action: LOG WASTE with 5-second Undo
+  const handleQuickWaste = async (item) => {
+    const wasteQty = Math.min(item.currentStock, 0.5)
+    try {
+      await wasteService.recordWaste({
+        ingredientName: item.name,
+        quantity: wasteQty,
+        unit: item.unit || "kg",
+        reason: "Spoilage",
+        costEstimate: wasteQty * (item.unitCost || 60),
+      })
+
+      toast.undo(`Logged ${wasteQty} ${item.unit || "kg"} ${item.name} as waste`, () => {
+        // undo handler
+      })
+    } catch (err) {
+      console.error("Quick waste error:", err)
+    }
+  }
+
+  // Fast Quick Action: REORDER (jump to planner)
+  const handleQuickReorder = (item) => {
+    navigate(`/purchase-planner?item=${encodeURIComponent(item.name)}`)
+  }
+
+  // Open Receive Modal
+  const handleOpenReceive = (prefill = null) => {
+    const target = prefill || items[0]
     if (target) {
       setFormIngredientId(target.id)
       setFormBatchNumber(
@@ -147,10 +193,7 @@ export const InventoryPage = () => {
       )
       setFormBatchQty(10)
       setFormBatchCost(target.unitCost || 50)
-      const shelfDays = target.shelfLifeDays || 7
-      const expDate = new Date(Date.now() + shelfDays * 86400000).toISOString().split("T")[0]
-      setFormBatchExpiry(expDate)
-      setFormSupplier(target.preferredSupplier || "Local Vendor")
+      setFormSupplier(target.preferredSupplier || "Direct Vendor")
     }
     setShowReceiveModal(true)
   }
@@ -159,941 +202,384 @@ export const InventoryPage = () => {
   const handleReceiveStock = async (e) => {
     e.preventDefault()
     setSubmitting(true)
-    setError(null)
-
-    const matchedIng = items.find((i) => i.id === parseInt(formIngredientId, 10))
+    const target = items.find((i) => i.id === parseInt(formIngredientId, 10))
 
     try {
-      const payload = {
+      await inventoryService.receiveBatch({
         ingredientId: parseInt(formIngredientId, 10),
         batchNumber: formBatchNumber,
         quantity: parseFloat(formBatchQty),
-        unit: matchedIng ? matchedIng.unit : "kg",
+        unit: target?.unit || "kg",
         unitCost: parseFloat(formBatchCost),
         expiryDate: formBatchExpiry,
         supplierName: formSupplier,
-      }
-
-      const res = await inventoryService.receiveBatch(payload)
-      if (res.data?.success) {
-        setSuccessMsg(
-          `Batch ${formBatchNumber} received into stock! Logged in FEFO inventory.`
-        )
-        setShowReceiveModal(false)
-        loadInventoryData(true)
-      }
-    } catch (err) {
-      console.error("Receive batch error:", err)
-      setError(err.response?.data?.message || "Failed to receive batch.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // Submit Stock Consumption (FEFO)
-  const handleConsumeStock = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      const res = await inventoryService.consumeStock({
-        ingredientId: parseInt(consumeIngId, 10),
-        quantity: parseFloat(consumeQty),
-        reason: consumeReason,
       })
-      if (res.data?.success) {
-        setSuccessMsg(res.data.message || "Stock consumed via FEFO.")
-        setShowConsumeModal(false)
-        loadInventoryData(true)
-      }
+
+      toast.success(`Received ${formBatchQty} ${target?.unit || "kg"} of ${target?.name || "Stock"}`)
+      setShowReceiveModal(false)
+      loadInventoryData(true)
     } catch (err) {
-      console.error("Stock consumption error:", err)
-      setError(err.response?.data?.message || "Failed to consume stock.")
+      console.error("Receive error:", err)
+      toast.error("Failed to receive stock batch.")
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Submit Physical Count Adjustment
-  const handleAdjustStock = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
+  // Categories
+  const categories = ["all", ...new Set(items.map((i) => i.category || "General").filter(Boolean))]
 
-    try {
-      const res = await inventoryService.adjustStock({
-        ingredientId: parseInt(adjustIngId, 10),
-        newStock: parseFloat(adjustNewStock),
-        notes: adjustNotes,
-      })
-      if (res.data?.success) {
-        setSuccessMsg(res.data.message || "Inventory stock adjusted.")
-        setShowAdjustModal(false)
-        loadInventoryData(true)
-      }
-    } catch (err) {
-      console.error("Stock adjustment error:", err)
-      setError(err.response?.data?.message || "Failed to adjust stock.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  // Urgency-ranked sorting: "use first" default
+  const sortedItems = [...items].sort((a, b) => {
+    const urgencyOrder = { today: 1, week: 2, fine: 3 }
+    const urgA = urgencyOrder[getItemUrgency(a)] || 3
+    const urgB = urgencyOrder[getItemUrgency(b)] || 3
+    if (urgA !== urgB) return urgA - urgB
+    return (a.currentStock / (a.parLevel || a.reorderPoint || 10)) - (b.currentStock / (b.parLevel || b.reorderPoint || 10))
+  })
 
-  // Metrics
-  const totalValuation = dashboardMetrics?.totalInventoryValue || items.reduce((sum, it) => sum + (it.currentStock * it.unitCost), 0)
-  const lowStockCount = dashboardMetrics?.lowStockCount || items.filter((it) => it.currentStock <= it.reorderPoint).length
-  const nearExpiryBatches = batches.filter((b) => b.shelfLifeStatus === "critical" || b.shelfLifeStatus === "warning" || (b.daysToExpiry !== undefined && b.daysToExpiry <= 3))
+  // Filtered
+  const filteredItems = sortedItems.filter((item) => {
+    const matchesCat = selectedCategory === "all" || item.category === selectedCategory
+    const matchesSearch =
+      !searchQuery.trim() ||
+      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.preferredSupplier?.toLowerCase().includes(searchQuery.toLowerCase())
+    const urg = getItemUrgency(item)
+    const matchesUrg = urgencyFilter === "all" || urg === urgencyFilter
+    return matchesCat && matchesSearch && matchesUrg
+  })
+
+  // Summary counts
+  const useTodayCount = items.filter((i) => getItemUrgency(i) === "today").length
+  const useWeekCount = items.filter((i) => getItemUrgency(i) === "week").length
+  const fineCount = items.filter((i) => getItemUrgency(i) === "fine").length
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
+    <div className="space-y-6 animate-in fade-in duration-150">
+      {/* Top Header Rail */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-paper-border dark:border-chalkboard-border">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              Smart Inventory Management
-            </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-700 uppercase tracking-wider">
-              FEFO Enforced
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-bold text-leaf uppercase tracking-wider mb-1">
+            <Boxes className="w-4 h-4" />
+            <span>Store & Walk-in Cooler</span>
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Real-time usable stock, batch expiry tracking, and First-Expired, First-Out (FEFO) consumption audits.
-          </p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-charcoal dark:text-chalk">
+            Stock & Inventory
+          </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center space-x-2.5">
+          <BigButton
+            variant="primary"
+            size="default"
+            icon={Plus}
+            onClick={() => handleOpenReceive()}
+          >
+            Receive Batch
+          </BigButton>
           <button
+            type="button"
             onClick={() => loadInventoryData(true)}
-            disabled={refreshing}
-            className="p-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1 cursor-pointer shadow-xs"
-            title="Refresh from Database"
+            className="p-2.5 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted hover:text-charcoal hover:bg-paper-200 transition cursor-pointer"
+            title="Refresh Stock"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (items.length > 0) {
-                setConsumeIngId(items[0].id)
-                setConsumeQty(2)
-                setConsumeReason("kitchen_prep")
-              }
-              setShowConsumeModal(true)
-            }}
-            className="px-3 py-2 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-200 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer shadow-xs"
-          >
-            <TrendingDown className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-            <span>Record Consumption</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenReceiveModal()}
-            className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Receive New Batch</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-chilli" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Notifications */}
-      {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between animate-in fade-in">
-          <div className="flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="font-medium">{successMsg}</span>
-          </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs flex items-center justify-between animate-in fade-in">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span className="font-medium">{error}</span>
-          </div>
-          <button onClick={() => setError(null)} className="text-rose-700 dark:text-rose-300 hover:opacity-75 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Total Usable Valuation</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
-            ₹{Math.round(totalValuation).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">{items.length} Active Raw Ingredients</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Low Stock SKUs</div>
-          <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1 font-mono">{lowStockCount} Items</div>
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">Below safety reorder threshold</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Near-Expiry Batches</div>
-          <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1 font-mono">{nearExpiryBatches.length} Batches</div>
-          <p className="text-[11px] text-rose-700 dark:text-rose-400 font-medium mt-1">Within 48h shelf life window</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">FEFO Integrity</div>
-          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1 font-mono">100% Active</div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">Oldest non-expired batch consumed first</p>
-        </div>
-      </div>
-
-      {/* View Mode Navigation Tabs */}
-      <div className="flex border-b border-stone-200 dark:border-stone-800 text-xs font-medium">
+      {/* Urgency Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
-          onClick={() => setActiveTab("inventory")}
-          className={`pb-3 px-4 border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-            activeTab === "inventory"
-              ? "border-emerald-700 dark:border-emerald-500 text-emerald-800 dark:text-emerald-300 font-semibold"
-              : "border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
+          type="button"
+          onClick={() => setUrgencyFilter(urgencyFilter === "today" ? "all" : "today")}
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+            urgencyFilter === "today"
+              ? "bg-chilli-light dark:bg-chilli-darkLight border-chilli ring-2 ring-chilli/30"
+              : "bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border"
           }`}
         >
-          <Boxes className="w-4 h-4" />
-          <span>Usable Inventory Stock ({items.length})</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase text-chilli tracking-wider">
+              Use Today
+            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-chilli" />
+          </div>
+          <div className="font-serif font-extrabold text-2xl sm:text-3xl text-charcoal dark:text-chalk mt-1">
+            {useTodayCount} items
+          </div>
+          <div className="text-xs text-charcoal-muted dark:text-chalk-muted mt-0.5">
+            Critical expiry or zero stock
+          </div>
         </button>
 
         <button
-          onClick={() => setActiveTab("batches")}
-          className={`pb-3 px-4 border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-            activeTab === "batches"
-              ? "border-emerald-700 dark:border-emerald-500 text-emerald-800 dark:text-emerald-300 font-semibold"
-              : "border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
+          type="button"
+          onClick={() => setUrgencyFilter(urgencyFilter === "week" ? "all" : "week")}
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+            urgencyFilter === "week"
+              ? "bg-turmeric-light dark:bg-turmeric-darkLight border-turmeric ring-2 ring-turmeric/30"
+              : "bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border"
           }`}
         >
-          <Clock className="w-4 h-4" />
-          <span>FEFO Batches & Expiry ({batches.length})</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase text-turmeric tracking-wider">
+              Use This Week
+            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-turmeric" />
+          </div>
+          <div className="font-serif font-extrabold text-2xl sm:text-3xl text-charcoal dark:text-chalk mt-1">
+            {useWeekCount} items
+          </div>
+          <div className="text-xs text-charcoal-muted dark:text-chalk-muted mt-0.5">
+            Running low or 3–4 days left
+          </div>
         </button>
 
         <button
-          onClick={() => setActiveTab("movements")}
-          className={`pb-3 px-4 border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
-            activeTab === "movements"
-              ? "border-emerald-700 dark:border-emerald-500 text-emerald-800 dark:text-emerald-300 font-semibold"
-              : "border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
+          type="button"
+          onClick={() => setUrgencyFilter(urgencyFilter === "fine" ? "all" : "fine")}
+          className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+            urgencyFilter === "fine"
+              ? "bg-leaf-light dark:bg-leaf-darkLight border-leaf ring-2 ring-leaf/30"
+              : "bg-white dark:bg-chalkboard-card border-paper-border dark:border-chalkboard-border"
           }`}
         >
-          <History className="w-4 h-4" />
-          <span>Stock Movement Audit Trail ({movements.length})</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase text-leaf tracking-wider">
+              Healthy Stock
+            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-leaf" />
+          </div>
+          <div className="font-serif font-extrabold text-2xl sm:text-3xl text-charcoal dark:text-chalk mt-1">
+            {fineCount} items
+          </div>
+          <div className="text-xs text-charcoal-muted dark:text-chalk-muted mt-0.5">
+            Above par level & fresh
+          </div>
         </button>
       </div>
 
-      {/* TAB 1: USABLE INVENTORY STOCK */}
-      {activeTab === "inventory" && (
-        <div className="space-y-4">
-          {/* Controls: Search & Category Tabs */}
-          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3 shadow-xs">
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full sm:w-80">
-                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search by ingredient, SKU, or supplier..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center space-x-1.5 text-xs">
-                <span className="text-stone-500 dark:text-stone-400 font-medium text-[11px]">Filter:</span>
-                <div className="inline-flex bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg border border-stone-200 dark:border-stone-700">
-                  <button
-                    onClick={() => setStatusFilter("all")}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
-                      statusFilter === "all" ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                    }`}
-                  >
-                    All SKUs
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("low")}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
-                      statusFilter === "low" ? "bg-white dark:bg-stone-700 text-amber-800 dark:text-amber-300 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                    }`}
-                  >
-                    Low Stock
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter("out")}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
-                      statusFilter === "out" ? "bg-white dark:bg-stone-700 text-rose-800 dark:text-rose-300 shadow-xs font-semibold" : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-                    }`}
-                  >
-                    Out of Stock
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Category Pills */}
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs custom-scrollbar">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-md whitespace-nowrap text-xs transition cursor-pointer ${
-                    selectedCategory === cat
-                      ? "bg-emerald-700 dark:bg-emerald-600 text-white font-semibold"
-                      : "bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-750 border border-stone-200 dark:border-stone-700"
-                  }`}
-                >
-                  {cat === "all" ? "All Categories" : cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Main Inventory Table */}
-          <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden shadow-xs">
-            {loading ? (
-              <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                <p className="text-xs text-stone-500 dark:text-stone-400">Loading live inventory from SQLite...</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
-                      <th className="py-3 px-4">SKU Code</th>
-                      <th className="py-3 px-4">Ingredient Name</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4 text-right">Current Usable Stock</th>
-                      <th className="py-3 px-4 text-right">Reorder Point</th>
-                      <th className="py-3 px-4 text-right">Unit Cost</th>
-                      <th className="py-3 px-4 text-right">Total Value</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
-                    {filteredItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-10 text-center text-stone-400 dark:text-stone-500">
-                          No ingredients found matching your search and filter criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredItems.map((item) => {
-                        const isOut = item.currentStock <= 0.001
-                        const isLow = item.currentStock <= item.reorderPoint
-                        const itemTotalVal = Math.round(item.currentStock * item.unitCost)
-                        const ingBatches = batches.filter((b) => b.ingredientId === item.id)
-
-                        return (
-                          <tr key={item.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/50 transition">
-                            <td className="py-3 px-4 font-mono font-medium text-stone-600 dark:text-stone-400">{item.sku}</td>
-                            <td className="py-3 px-4 font-semibold text-stone-900 dark:text-stone-100">
-                              <div>{item.name}</div>
-                              <div className="text-[10px] text-stone-400 dark:text-stone-500 font-normal">{item.preferredSupplier}</div>
-                            </td>
-                            <td className="py-3 px-4 text-stone-500 dark:text-stone-400">{item.category}</td>
-                            <td className="py-3 px-4 font-mono font-semibold text-stone-900 dark:text-stone-100 text-right">
-                              {item.usableStock !== undefined ? item.usableStock : item.currentStock}{" "}
-                              <span className="text-xs font-normal text-stone-500 dark:text-stone-400">{item.unit}</span>
-                            </td>
-                            <td className="py-3 px-4 font-mono text-stone-600 dark:text-stone-400 text-right">
-                              {item.reorderPoint} {item.unit}
-                            </td>
-                            <td className="py-3 px-4 font-mono text-stone-600 dark:text-stone-400 text-right">₹{item.unitCost}</td>
-                            <td className="py-3 px-4 font-mono font-bold text-stone-900 dark:text-stone-100 text-right">
-                              ₹{itemTotalVal.toLocaleString()}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {isOut ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                                  Out of Stock
-                                </span>
-                              ) : isLow ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
-                                  Low Stock
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                  Sufficient
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right space-x-1.5">
-                              <button
-                                onClick={() => setSelectedIngredientForBatches(item)}
-                                className="px-2 py-1 rounded bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition cursor-pointer"
-                                title="Inspect FEFO Batches"
-                              >
-                                Batches ({ingBatches.length})
-                              </button>
-                              <button
-                                onClick={() => handleOpenReceiveModal(item)}
-                                className="p-1 rounded text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
-                                title="Stock In New Batch"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setAdjustIngId(item.id)
-                                  setAdjustNewStock(item.currentStock)
-                                  setAdjustNotes("Physical count audit")
-                                  setShowAdjustModal(true)
-                                }}
-                                className="p-1 rounded text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
-                                title="Audit / Stock Adjustment"
-                              >
-                                <SlidersHorizontal className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-charcoal-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search ingredients by name or supplier..."
+            className="w-full pl-10 pr-4 py-2.5 text-base"
+          />
         </div>
-      )}
 
-      {/* TAB 2: FEFO BATCHES & EXPIRY SENTINEL */}
-      {activeTab === "batches" && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-xs">
-            <div>
-              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                <span>FEFO Batch Expiry Sentinel</span>
-              </h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                Pantry inventory batches arranged strictly by expiry date (First-Expired, First-Out)
-              </p>
-            </div>
+        {/* Categories Chips */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+          {categories.map((cat) => (
+            <FilterChip
+              key={cat}
+              label={cat === "all" ? "All Categories" : cat}
+              active={selectedCategory === cat}
+              onClick={() => setSelectedCategory(cat)}
+            />
+          ))}
+        </div>
+      </div>
 
-            <button
-              onClick={() => handleOpenReceiveModal()}
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium cursor-pointer shadow-xs"
+      {/* Urgency-Ranked Stock Rows (Default: "Use First") */}
+      <div className="space-y-3">
+        {filteredItems.map((item) => {
+          const urgency = getItemUrgency(item)
+          const par = item.parLevel || item.reorderPoint || 10
+          const fillRatio = Math.min(100, Math.round((item.currentStock / par) * 100))
+
+          return (
+            <Ticket
+              key={item.id}
+              status={urgency === "today" ? "red" : urgency === "week" ? "yellow" : "green"}
+              className="hover:border-chilli/30"
             >
-              + Stock In Batch
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {batches.map((batch) => {
-              const isCrit = batch.shelfLifeStatus === "critical"
-              const isWarn = batch.shelfLifeStatus === "warning"
-              const isExp = batch.shelfLifeStatus === "expired"
-
-              return (
-                <div
-                  key={batch.id}
-                  className={`p-4 rounded-lg border transition shadow-xs ${
-                    isExp
-                      ? "bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 opacity-75"
-                      : isCrit
-                      ? "bg-white dark:bg-stone-900 border-rose-300 dark:border-rose-900/60"
-                      : isWarn
-                      ? "bg-white dark:bg-stone-900 border-amber-300 dark:border-amber-900/60"
-                      : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-800 dark:text-stone-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-semibold text-stone-900 dark:text-stone-100">{batch.batchNumber}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                        isExp
-                          ? "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-700"
-                          : isCrit
-                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900"
-                          : isWarn
-                          ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900"
-                          : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      }`}
-                    >
-                      {isExp
-                        ? "Expired"
-                        : batch.daysToExpiry <= 1
-                        ? "Expires Tomorrow"
-                        : `${batch.daysToExpiry} Days Left`}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Left Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h3 className="font-bold text-base sm:text-lg text-charcoal dark:text-chalk truncate">
+                      {item.name}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-md bg-paper-200 dark:bg-chalkboard text-xs font-semibold text-charcoal-muted dark:text-chalk-muted">
+                      {item.category || "Produce"}
                     </span>
-                  </div>
-
-                  <h3 className="font-semibold text-sm text-stone-900 dark:text-stone-100 mt-2">{batch.ingredientName}</h3>
-                  <div className="text-xs text-stone-600 dark:text-stone-400 mt-1 space-y-0.5">
-                    <div>
-                      Remaining: <strong className="font-mono text-stone-900 dark:text-stone-100">{batch.quantityRemaining} {batch.unit}</strong>{" "}
-                      <span className="text-[10px] text-stone-400 dark:text-stone-500">/ {batch.initialQuantity} received</span>
-                    </div>
-                    <div>Expiry Date: <span className="font-mono">{batch.expiryDate}</span></div>
-                    <div>Supplier: {batch.supplierName}</div>
-                    {batch.unitCost > 0 && (
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                        Unit Cost: ₹{batch.unitCost}/{batch.unit}
-                      </div>
+                    {urgency === "today" && (
+                      <span className="px-2 py-0.5 rounded-md bg-chilli text-white text-[10px] font-black uppercase">
+                        Use Today
+                      </span>
+                    )}
+                    {urgency === "week" && (
+                      <span className="px-2 py-0.5 rounded-md bg-turmeric text-charcoal text-[10px] font-black uppercase">
+                        Use This Week
+                      </span>
                     )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 3: STOCK MOVEMENT AUDIT TRAIL */}
-      {activeTab === "movements" && (
-        <div className="rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden shadow-xs">
-          <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
-                Stock Movement Audit Trail ({movements.length} Events)
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                Immutable ledger of sales consumption, batch receiving, and audit adjustments
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 uppercase tracking-wider text-[11px] font-semibold">
-                  <th className="py-2.5 px-3">Timestamp</th>
-                  <th className="py-2.5 px-3">Ingredient</th>
-                  <th className="py-2.5 px-3">Movement Type</th>
-                  <th className="py-2.5 px-3 text-right">Quantity Delta</th>
-                  <th className="py-2.5 px-3">Reference / Order</th>
-                  <th className="py-2.5 px-3">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800 text-stone-800 dark:text-stone-200">
-                {movements.map((m) => {
-                  const isPositive = m.quantity > 0
-                  return (
-                    <tr key={m.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40">
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-stone-500 dark:text-stone-400">
-                        {m.timestamp || m.date}
-                      </td>
-                      <td className="py-2.5 px-3 font-semibold text-stone-900 dark:text-stone-100">
-                        {m.ingredientName}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className="capitalize font-medium text-stone-700 dark:text-stone-300">
-                          {m.movementType?.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td className={`py-2.5 px-3 font-mono font-semibold text-right ${isPositive ? "text-emerald-700 dark:text-emerald-400" : "text-stone-900 dark:text-stone-100"}`}>
-                        {isPositive ? `+${m.quantity}` : m.quantity} {m.unit}
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-stone-600 dark:text-stone-400">
-                        {m.referenceId || "—"}
-                      </td>
-                      <td className="py-2.5 px-3 text-stone-500 dark:text-stone-400 truncate max-w-xs">
-                        {m.notes || "—"}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Inspect Ingredient Batches Modal */}
-      {selectedIngredientForBatches && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
-                  Batches: {selectedIngredientForBatches.name}
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Current Usable Stock: <strong className="font-mono text-stone-900 dark:text-stone-100">{selectedIngredientForBatches.usableStock || selectedIngredientForBatches.currentStock} {selectedIngredientForBatches.unit}</strong>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedIngredientForBatches(null)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar">
-              {batches.filter((b) => b.ingredientId === selectedIngredientForBatches.id).length === 0 ? (
-                <div className="py-8 text-center text-stone-400 dark:text-stone-500 text-xs">
-                  No active batches recorded for this ingredient.
-                </div>
-              ) : (
-                batches
-                  .filter((b) => b.ingredientId === selectedIngredientForBatches.id)
-                  .map((b) => (
-                    <div key={b.id} className="p-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-stone-900 dark:text-stone-100 font-mono">{b.batchNumber}</div>
-                        <div className="text-[11px] text-stone-500 dark:text-stone-400">
-                          Expires: <strong>{b.expiryDate}</strong> ({b.daysToExpiry} days remaining)
-                        </div>
-                        <div className="text-[10px] text-stone-400">Supplier: {b.supplierName}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-stone-900 dark:text-stone-100 text-sm font-mono">
-                          {b.quantityRemaining} {b.unit}
-                        </div>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-medium uppercase">
-                          {b.shelfLifeStatus}
-                        </span>
-                      </div>
+                  {/* Par-level fill bar */}
+                  <div className="mt-2 max-w-md">
+                    <div className="flex justify-between text-xs text-charcoal-muted dark:text-chalk-muted mb-1">
+                      <span>
+                        Current: <strong className="text-charcoal dark:text-chalk">{item.currentStock} {item.unit}</strong>
+                      </span>
+                      <span>Par: {par} {item.unit}</span>
                     </div>
-                  ))
-              )}
-            </div>
+                    <div className="w-full h-2 rounded-full bg-paper-200 dark:bg-chalkboard-border overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          fillRatio <= 35
+                            ? "bg-chilli"
+                            : fillRatio <= 75
+                            ? "bg-turmeric"
+                            : "bg-leaf"
+                        }`}
+                        style={{ width: `${fillRatio}%` }}
+                      />
+                    </div>
+                  </div>
 
-            <div className="mt-5 pt-3 border-t border-stone-100 dark:border-stone-800 flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setSelectedIngredientForBatches(null)}
-                className="px-3.5 py-2 rounded-md bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const target = selectedIngredientForBatches
-                  setSelectedIngredientForBatches(null)
-                  handleOpenReceiveModal(target)
-                }}
-                className="px-3.5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium cursor-pointer"
-              >
-                + Receive New Batch
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Receive New Batch Modal */}
-      {showReceiveModal && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-lg w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Receive Batch (Stock-In)</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Record delivery receipt and initiate FEFO tracking</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowReceiveModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleReceiveStock} className="mt-4 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Select Ingredient <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formIngredientId}
-                  onChange={(e) => {
-                    const selId = parseInt(e.target.value, 10)
-                    setFormIngredientId(selId)
-                    const matched = items.find((i) => i.id === selId)
-                    if (matched) {
-                      setFormBatchCost(matched.unitCost || 50)
-                      setFormSupplier(matched.preferredSupplier || "Local Vendor")
-                    }
-                  }}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                >
-                  {items.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({it.unit}) — Current: {it.currentStock} {it.unit}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Batch Number <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formBatchNumber}
-                    onChange={(e) => setFormBatchNumber(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono text-stone-900 dark:text-stone-100"
-                    placeholder="e.g. RICE-1114-01"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Received Quantity <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    value={formBatchQty}
-                    onChange={(e) => setFormBatchQty(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Unit Cost (₹)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    required
-                    value={formBatchCost}
-                    onChange={(e) => setFormBatchCost(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Expiration Date <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formBatchExpiry}
-                    onChange={(e) => setFormBatchExpiry(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Supplier / Vendor</label>
-                <input
-                  type="text"
-                  value={formSupplier}
-                  onChange={(e) => setFormSupplier(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                  placeholder="e.g. Amul Dairy, APMC Mandi..."
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowReceiveModal(false)}
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium text-xs hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium text-xs shadow-xs flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Confirm & Receive Batch</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Record Consumption Modal */}
-      {showConsumeModal && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-md w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Record Stock Consumption</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">FEFO automatically deducts from oldest active batches</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowConsumeModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConsumeStock} className="mt-4 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Ingredient <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={consumeIngId}
-                  onChange={(e) => setConsumeIngId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                >
-                  {items.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({it.unit}) — Usable: {it.usableStock || it.currentStock} {it.unit}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Quantity to Issue</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    required
-                    value={consumeQty}
-                    onChange={(e) => setConsumeQty(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
-                  />
+                  <div className="text-[11px] text-charcoal-muted dark:text-chalk-muted mt-1.5 flex items-center space-x-3">
+                    <span>Supplier: {item.preferredSupplier || "Direct Vendor"}</span>
+                    <span>•</span>
+                    <span>Cost: ₹{item.unitCost || 45}/{item.unit}</span>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Reason</label>
-                  <select
-                    value={consumeReason}
-                    onChange={(e) => setConsumeReason(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
+                {/* Right Action Buttons: Use, Waste, Reorder */}
+                <div className="flex items-center space-x-2 self-end lg:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickUse(item)}
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border text-xs font-bold text-charcoal dark:text-chalk hover:bg-paper-200 dark:hover:bg-chalkboard-border active:scale-95 transition cursor-pointer"
+                    title="Log 1 portion used in prep"
                   >
-                    <option value="kitchen_prep">Kitchen Prep Shift</option>
-                    <option value="catering">Catering Batch</option>
-                    <option value="tasting">Tasting / QA</option>
-                    <option value="spoilage">Discard / Damaged</option>
-                  </select>
+                    Use (-1)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickWaste(item)}
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-chilli-light dark:bg-chilli-darkLight border border-chilli/30 text-xs font-bold text-chilli hover:bg-chilli hover:text-white active:scale-95 transition cursor-pointer"
+                    title="Log spoilage or waste"
+                  >
+                    Waste
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickReorder(item)}
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-turmeric-light dark:bg-turmeric-darkLight border border-turmeric/40 text-xs font-bold text-charcoal hover:bg-turmeric active:scale-95 transition cursor-pointer"
+                    title="Add to shopping list"
+                  >
+                    Reorder
+                  </button>
                 </div>
               </div>
+            </Ticket>
+          )
+        })}
 
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowConsumeModal(false)}
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium text-xs hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium text-xs shadow-xs flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Issue & Deduct FEFO</span>
-                </button>
-              </div>
-            </form>
+        {filteredItems.length === 0 && (
+          <div className="p-12 text-center rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted text-sm">
+            No ingredients matched your filter.
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Stock Adjustment Modal */}
-      {showAdjustModal && (
-        <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-900 rounded-lg max-w-md w-full border border-stone-200 dark:border-stone-800 shadow-xl p-6 text-stone-900 dark:text-stone-100 animate-in fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
-              <div>
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">Physical Stock Count Audit</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Correct inventory ledger based on actual count</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAdjustModal(false)}
-                className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* RECEIVE BATCH BOTTOM SHEET */}
+      <BottomSheet
+        isOpen={showReceiveModal}
+        onClose={() => setShowReceiveModal(false)}
+        title="Receive Stock Batch"
+        subtitle="Log incoming supplier delivery into inventory"
+      >
+        <form onSubmit={handleReceiveStock} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-1.5">
+              Select Ingredient
+            </label>
+            <select
+              value={formIngredientId}
+              onChange={(e) => setFormIngredientId(e.target.value)}
+              className="w-full p-3 text-base"
+              required
+            >
+              {items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name} ({i.unit}) - Currently: {i.currentStock}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-1.5">
+                Batch Number
+              </label>
+              <input
+                type="text"
+                value={formBatchNumber}
+                onChange={(e) => setFormBatchNumber(e.target.value)}
+                className="w-full p-2.5 text-sm"
+                required
+              />
             </div>
-
-            <form onSubmit={handleAdjustStock} className="mt-4 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Ingredient</label>
-                <select
-                  value={adjustIngId}
-                  onChange={(e) => setAdjustIngId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                >
-                  {items.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({it.unit}) — Current Count: {it.currentStock} {it.unit}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Verified Physical Count
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  required
-                  value={adjustNewStock}
-                  onChange={(e) => setAdjustNewStock(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">Reason / Notes</label>
-                <input
-                  type="text"
-                  value={adjustNotes}
-                  onChange={(e) => setAdjustNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAdjustModal(false)}
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-medium text-xs hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-3.5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-medium text-xs shadow-xs flex items-center space-x-1 cursor-pointer"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Save Audit Adjustment</span>
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-1.5">
+                Expiry Date
+              </label>
+              <input
+                type="date"
+                value={formBatchExpiry}
+                onChange={(e) => setFormBatchExpiry(e.target.value)}
+                className="w-full p-2.5 text-sm"
+                required
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex items-center justify-between p-3 rounded-xl bg-paper-100 dark:bg-chalkboard border border-paper-border dark:border-chalkboard-border">
+            <span className="font-bold text-sm text-charcoal dark:text-chalk">Quantity Received</span>
+            <Stepper
+              value={formBatchQty}
+              onChange={setFormBatchQty}
+              min={1}
+              step={1}
+              unit="units"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-charcoal-muted dark:text-chalk-muted mb-1.5">
+              Supplier Name
+            </label>
+            <input
+              type="text"
+              value={formSupplier}
+              onChange={(e) => setFormSupplier(e.target.value)}
+              placeholder="e.g. Metro Wholesale, Dairy Direct"
+              className="w-full p-2.5 text-sm"
+            />
+          </div>
+
+          <BigButton
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={submitting}
+          >
+            Confirm & Put in Stock
+          </BigButton>
+        </form>
+      </BottomSheet>
     </div>
   )
 }
-
-export default InventoryPage

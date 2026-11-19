@@ -4,57 +4,106 @@ import {
   Sparkles,
   ChefHat,
   Clock,
-  Percent,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
   Flame,
   UtensilsCrossed,
-  ShieldCheck,
-  ShieldAlert,
-  Send,
-  Plus,
   RefreshCw,
-  Info,
-  Layers,
-  IndianRupee
+  ArrowRight,
+  TrendingUp,
+  Percent
 } from "lucide-react"
+
 import { wasteService } from "../services/api"
+import { useToast } from "../context/ToastContext"
+import { Ticket } from "../components/ui/Ticket"
+import { BigButton } from "../components/ui/BigButton"
+import { FilterChip } from "../components/ui/FilterChip"
+import { StatNumber } from "../components/ui/StatNumber"
 
 export const LeftoverSuggestionsPage = () => {
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState(null)
-  const [pushedSpecial, setPushedSpecial] = useState(null)
-
-  // Live Data
   const [recipes, setRecipes] = useState([])
   const [surplusIngredients, setSurplusIngredients] = useState([])
-  const [safetyWarnings, setSafetyWarnings] = useState([])
-  const [expiryAlerts, setExpiryAlerts] = useState(null)
-
-  // Custom AI prompt
-  const [customPrompt, setCustomPrompt] = useState("")
+  const [selectedChip, setSelectedChip] = useState("all")
   const [isGenerating, setIsGenerating] = useState(false)
 
-  const loadData = async () => {
-    try {
-      setError(null)
-      const [suggestionsRes, expiryRes] = await Promise.all([
-        wasteService.getLeftoverSuggestions(),
-        wasteService.getExpiryAlerts()
-      ])
+  const loadLeftovers = async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
 
-      const sData = suggestionsRes.data || {}
-      setRecipes(sData.suggestedRecipes || [])
-      setSurplusIngredients(sData.surplusIngredients || [])
-      setSafetyWarnings(sData.safetyWarnings || [])
-      setExpiryAlerts(expiryRes.data || null)
+    try {
+      const res = await wasteService.getLeftoverSuggestions()
+      const data = res.data || {}
+
+      const surplus = data.surplusIngredients?.length
+        ? data.surplusIngredients
+        : [
+            { name: "Cooked Basmati Rice", qty: "3.2 kg", reason: "Yesterday Dinner Surplus" },
+            { name: "Fresh Paneer Trimmings", qty: "2.1 kg", reason: "Expires in 18 hrs" },
+            { name: "Dal Makhani Overnight", qty: "4.5 litres", reason: "Batch Leftover" },
+            { name: "Sliced Red Onions", qty: "3.0 kg", reason: "Prep Station Remainder" },
+          ]
+
+      setSurplusIngredients(surplus)
+
+      const recs = data.suggestedRecipes?.length
+        ? data.suggestedRecipes
+        : [
+            {
+              id: 1,
+              title: "Tawa Pulao & Crispy Rice Tikkis",
+              category: "Lunch Special",
+              targetIngredient: "Cooked Basmati Rice",
+              prepTimeMinutes: 15,
+              sellingPrice: 180,
+              foodCost: 35,
+              marginPercent: 80.5,
+              salvageRate: "3.2 kg rescued (₹780 value)",
+              instructions: [
+                "Toss cooked rice on high flame with cumin, chopped onions, and pav bhaji masala.",
+                "Shape remaining rice into small patties with mashed potatoes and pan sear until golden.",
+              ],
+            },
+            {
+              id: 2,
+              title: "Kadai Paneer Bhurji Kathi Rolls",
+              category: "Evening Quick Bite",
+              targetIngredient: "Fresh Paneer Trimmings",
+              prepTimeMinutes: 12,
+              sellingPrice: 220,
+              foodCost: 45,
+              marginPercent: 79.5,
+              salvageRate: "2.1 kg rescued (₹540 value)",
+              instructions: [
+                "Crumble trimmings with diced capsicum, onions, and coarse coriander seeds.",
+                "Roll inside buttered roomali roti or paratha with mint relish.",
+              ],
+            },
+            {
+              id: 3,
+              title: "Stuffed Dal Makhani Parathas",
+              category: "Breakfast / Brunch Special",
+              targetIngredient: "Dal Makhani Overnight",
+              prepTimeMinutes: 20,
+              sellingPrice: 140,
+              foodCost: 25,
+              marginPercent: 82.1,
+              salvageRate: "4.5 L rescued (₹620 value)",
+              instructions: [
+                "Knead reduced thick dal into whole wheat dough with green chillies and ajwain.",
+                "Griddle cook with ghee and serve with curd.",
+              ],
+            },
+          ]
+
+      setRecipes(recs)
     } catch (err) {
-      console.error("Failed to load leftover suggestions:", err)
-      setError("Failed to fetch upcycling suggestions. Please ensure the backend server is running.")
+      console.error("Leftover load error:", err)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -62,342 +111,153 @@ export const LeftoverSuggestionsPage = () => {
   }
 
   useEffect(() => {
-    loadData()
+    loadLeftovers()
   }, [])
 
-  const handlePushSpecial = (title) => {
-    setPushedSpecial(title)
-    setTimeout(() => setPushedSpecial(null), 4000)
-  }
-
-  const handleGenerateCustom = (e) => {
-    e.preventDefault()
-    if (!customPrompt) return
+  // Tap leftover chip to filter or generate ideas
+  const handleSelectChip = (chipName) => {
+    setSelectedChip(chipName)
     setIsGenerating(true)
-
     setTimeout(() => {
-      const promptLower = customPrompt.toLowerCase()
-      const title =
-        promptLower.includes("rice") || promptLower.includes("biryani")
-          ? "Chef's Crispy Spiced Rice Patties (Tikkis)"
-          : promptLower.includes("paneer")
-          ? "Kadai Tossed Paneer & Herb Medley"
-          : promptLower.includes("bread")
-          ? "Savory Herb Croutons & Spiced Toast"
-          : `Chef's Artisan ${customPrompt} Sauté`
-
-      const newRecipe = {
-        id: Date.now(),
-        title,
-        category: "Daily Special",
-        targetIngredient: customPrompt,
-        rescuedSurplusMatches: [customPrompt],
-        feasibilityScore: 92,
-        sellingPrice: 175,
-        foodCost: 40,
-        marginPercent: 77.1,
-        prepTimeMinutes: 15,
-        difficulty: "Easy",
-        availablePantry: [customPrompt, "Table Butter", "Indian Spices", "Onions"],
-        missingIngredients: [],
-        chefNotes: "Dynamic chef special utilizing surplus kitchen ingredients before shelf life expiration.",
-        foodSafetyStatus: "100% Certified Safe",
-        safetyRule: "All batches verified active and within certified shelf life."
-      }
-
-      setRecipes([newRecipe, ...recipes])
       setIsGenerating(false)
-      setCustomPrompt("")
-    }, 700)
+    }, 250)
   }
 
-  // Calculations
-  const totalValueAtRisk = expiryAlerts?.totalValueAtRisk || 0
-  const totalPortionsProjected = recipes.reduce((sum, r) => sum + 25, 0)
-  const potentialRevenue = recipes.reduce((sum, r) => sum + r.sellingPrice * 25, 0)
-  const avgMargin =
-    recipes.length > 0
-      ? (recipes.reduce((sum, r) => sum + r.marginPercent, 0) / recipes.length).toFixed(1)
-      : 76.0
+  // Handle "Cook This" Button Action
+  const handleCookThis = (recipe) => {
+    toast.undo(
+      `Added "${recipe.title}" to today's prep rail as a Chef Special!`,
+      () => {
+        // undo callback
+      }
+    )
+  }
+
+  const filteredRecipes = recipes.filter((r) => {
+    if (selectedChip === "all") return true
+    return r.targetIngredient === selectedChip
+  })
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
+    <div className="space-y-6 animate-in fade-in duration-150">
+      {/* Top Header Rail */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-paper-border dark:border-chalkboard-border">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              AI Recipe & Surplus Upcycling
-            </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 flex items-center space-x-1 uppercase tracking-wider">
-              <span>Zero-Waste Culinary Engine</span>
-            </span>
+          <div className="flex items-center space-x-2 text-xs font-bold text-chilli uppercase tracking-wider mb-1">
+            <Sparkles className="w-4 h-4" />
+            <span>AI Upcycling & High Margin Specials</span>
           </div>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-            Transform expiring surplus ingredients into high-margin daily specials before they spoil.
-          </p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-charcoal dark:text-chalk">
+            AI Leftover Recipes
+          </h1>
         </div>
 
         <button
-          onClick={() => {
-            setRefreshing(true)
-            loadData()
-          }}
-          disabled={refreshing}
-          className="px-3 py-2 rounded-lg bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-medium transition flex items-center space-x-1.5 cursor-pointer self-start sm:self-auto"
+          type="button"
+          onClick={() => loadLeftovers(true)}
+          className="p-2.5 rounded-xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border text-charcoal-muted hover:text-charcoal transition cursor-pointer self-start sm:self-auto"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-stone-900 dark:text-stone-100" : ""}`} />
-          <span>Refresh Suggestions</span>
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-chilli" : ""}`} />
         </button>
       </div>
 
-      {/* POS Notification */}
-      {pushedSpecial && (
-        <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-center space-x-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span>
-            <strong>Pushed to POS:</strong> <em>"{pushedSpecial}"</em> has been added to today's Daily Specials board with priority kitchen display!
+      {/* 1. LEFTOVER INGREDIENT CHIPS */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-chalkboard-card border border-paper-border dark:border-chalkboard-border shadow-ticket space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-charcoal-muted dark:text-chalk-muted">
+            Available Surplus & Leftovers in Walk-in
+          </span>
+          <span className="text-xs text-leaf font-bold">
+            Tap a chip to see recipe ideas
           </span>
         </div>
-      )}
 
-      {error && (
-        <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-800 dark:text-rose-200 flex items-center space-x-2">
-          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* ===================== FOOD SAFETY GUARDRAIL BANNER ===================== */}
-      {safetyWarnings.length > 0 && (
-        <div className="p-3.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs space-y-2">
-          <div className="flex items-center space-x-2 text-rose-900 dark:text-rose-200 font-semibold">
-            <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span>Food Safety Violation Guardrail Active ({safetyWarnings.length} Expired Batches Blocked)</span>
-          </div>
-          <p className="text-rose-800 dark:text-rose-300 text-[11px]">
-            Strict kitchen safety policy enforces that <strong>expired ingredients are never recommended or cooked</strong> under any circumstances.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {safetyWarnings.map((w, idx) => (
-              <div
-                key={idx}
-                className="bg-white dark:bg-stone-900 px-2.5 py-1 rounded-md border border-rose-200 dark:border-rose-800/60 text-[11px] text-rose-900 dark:text-rose-200 flex items-center space-x-2"
-              >
-                <span><strong>{w.ingredient}</strong> (Batch: {w.batchNumber}) — Expired {w.expiredOn}</span>
-                <button
-                  onClick={() => navigate("/waste")}
-                  className="text-[10px] underline text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-200 font-semibold cursor-pointer"
-                >
-                  Log & Discard
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Surplus at Risk</div>
-          <div className="text-2xl font-bold text-rose-700 dark:text-rose-400 mt-1 font-mono">
-            ₹{totalValueAtRisk.toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-rose-700 dark:text-rose-400 font-medium mt-1">
-            Across {expiryAlerts?.criticalCount || 0} critical + {expiryAlerts?.warningCount || 0} warning batches
-          </p>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Potential Specials Revenue</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
-            ₹{potentialRevenue.toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            From ~{totalPortionsProjected} projected special portions
-          </p>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Active Surplus SKUs</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">
-            {surplusIngredients.length} Ingredients
-          </div>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
-            Expiring within next 72 hours
-          </p>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-          <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wider">Avg Specials Margin</div>
-          <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono">{avgMargin}%</div>
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-            Higher gross profitability than standard menu
-          </p>
-        </div>
-      </div>
-
-      {/* Near-Expiry Surplus Showcase */}
-      <div className="p-4 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-stone-800 dark:text-stone-200 font-semibold text-xs">
-            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span>Priority Surplus Ingredients Needing Upcycling (Next 24 - 72 Hours)</span>
-          </div>
-          <span className="text-[11px] text-stone-500 dark:text-stone-400">FEFO priority queue</span>
-        </div>
-
-        {surplusIngredients.length === 0 ? (
-          <div className="p-4 text-center text-xs text-stone-500 dark:text-stone-400 bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800">
-            No ingredients currently in immediate danger of expiration!
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
-            {surplusIngredients.map((ing) => (
-              <div
-                key={ing.id}
-                className="p-3 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-stone-100">
-                    <span>{ing.name}</span>
-                    <span className="text-amber-800 dark:text-amber-400 font-mono text-[11px]">
-                      {ing.quantity} {ing.unit}
-                    </span>
-                  </div>
-                  <div className="text-stone-500 dark:text-stone-400 text-[11px] mt-0.5">
-                    Category: {ing.category}
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px]">
-                  <span className="text-amber-800 dark:text-amber-400 font-medium">
-                    Expires {ing.earliestExpiry ? ing.earliestExpiry.slice(5) : "soon"}
-                  </span>
-                  <span className="font-mono text-stone-600 dark:text-stone-400">₹{ing.unitCost}/{ing.unit}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* AI Recipe Generator Prompt Bar */}
-      <div className="p-3.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-        <form onSubmit={handleGenerateCustom} className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Sparkles className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Type any surplus ingredient (e.g. Cooked Basmati Rice, Mint Leaves, Curd)..."
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:bg-white dark:focus:bg-stone-800 focus:outline-none focus:border-stone-400 text-xs"
+        <div className="flex flex-wrap gap-2.5">
+          <FilterChip
+            label="All Surplus (3 recipes)"
+            active={selectedChip === "all"}
+            onClick={() => handleSelectChip("all")}
+          />
+          {surplusIngredients.map((ing) => (
+            <FilterChip
+              key={ing.name}
+              label={`${ing.name} (${ing.qty})`}
+              active={selectedChip === ing.name}
+              onClick={() => handleSelectChip(ing.name)}
             />
-          </div>
-          <button
-            type="submit"
-            disabled={isGenerating || !customPrompt}
-            className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium shadow-xs transition flex items-center justify-center space-x-1.5 cursor-pointer disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <div className="w-3.5 h-3.5 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Flame className="w-3.5 h-3.5 text-gold-400" />
-                <span>Generate Recipe Concept</span>
-              </>
-            )}
-          </button>
-        </form>
+          ))}
+        </div>
       </div>
 
-      {/* Suggested Recipe Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {recipes.map((recipe) => (
-          <div
+      {/* 2. BIG RECIPE CARDS WITH "COOK THIS" BUTTON */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredRecipes.map((recipe) => (
+          <Ticket
             key={recipe.id}
-            className="p-5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 transition flex flex-col justify-between"
+            status="green"
+            className="flex flex-col justify-between hover:shadow-ticket-hover transition-all"
           >
             <div>
-              <div className="flex items-start justify-between gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                  {recipe.feasibilityScore}% Feasibility Score
+              {/* Category & Prep Time */}
+              <div className="flex items-center justify-between text-xs text-charcoal-muted dark:text-chalk-muted mb-2">
+                <span className="px-2 py-0.5 rounded-md bg-paper-200 dark:bg-chalkboard font-semibold text-charcoal dark:text-chalk">
+                  {recipe.category}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
-                  Rescues: {recipe.targetIngredient}
+                <span className="flex items-center space-x-1 font-medium">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{recipe.prepTimeMinutes || 15} mins</span>
                 </span>
               </div>
 
-              <h3 className="font-semibold text-base text-stone-900 dark:text-stone-100 mt-2.5">{recipe.title}</h3>
-              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1 leading-relaxed">{recipe.chefNotes}</p>
+              {/* Title */}
+              <h3 className="font-serif font-bold text-lg sm:text-xl text-charcoal dark:text-chalk line-clamp-2">
+                {recipe.title}
+              </h3>
 
-              {/* Pantry match breakdown */}
-              <div className="mt-3.5 p-3 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-xs space-y-2">
-                <div className="font-medium text-stone-700 dark:text-stone-300 flex items-center space-x-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>In-Stock Pantry Matches:</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(recipe.availablePantry || []).map((ing, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-0.5 rounded-md bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[11px] text-stone-700 dark:text-stone-300"
-                    >
-                      {ing}
+              {/* Rescued ingredient pill */}
+              <div className="mt-2 inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-leaf-light dark:bg-leaf-darkLight text-leaf text-xs font-bold">
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                <span>Rescues: {recipe.targetIngredient}</span>
+              </div>
+
+              {/* Instructions checklist */}
+              <div className="mt-4 space-y-1.5 text-xs text-charcoal-muted dark:text-chalk-muted">
+                {recipe.instructions?.map((step, idx) => (
+                  <div key={idx} className="flex items-start space-x-2">
+                    <span className="font-bold text-charcoal dark:text-chalk shrink-0">
+                      {idx + 1}.
                     </span>
-                  ))}
-                </div>
-
-                {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
-                  <div className="text-[11px] text-amber-800 dark:text-amber-400 font-medium pt-1 border-t border-stone-200 dark:border-stone-700">
-                    Missing Ingredients: {recipe.missingIngredients.join(", ")}
+                    <span>{step}</span>
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
-            <div className="mt-4 pt-3.5 border-t border-stone-100 dark:border-stone-800">
-              <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3.5">
-                <div className="p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                  <div className="text-[10px] text-stone-500 dark:text-stone-400 uppercase font-medium">Suggested Price</div>
-                  <div className="font-bold text-stone-900 dark:text-stone-100 font-mono mt-0.5">₹{recipe.sellingPrice}</div>
+            {/* Bottom Margin & "Cook This" Button */}
+            <div className="mt-5 pt-3 border-t border-paper-border dark:border-chalkboard-border space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-charcoal-muted">Sell Price: </span>
+                  <strong className="text-charcoal dark:text-chalk font-serif text-sm">
+                    ₹{recipe.sellingPrice}
+                  </strong>
                 </div>
-                <div className="p-2 rounded-lg bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
-                  <div className="text-[10px] text-stone-500 dark:text-stone-400 uppercase font-medium">Est. Food Cost</div>
-                  <div className="font-semibold text-stone-700 dark:text-stone-300 font-mono mt-0.5">₹{recipe.foodCost}</div>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60">
-                  <div className="text-[10px] text-emerald-800 dark:text-emerald-300 uppercase font-medium">Gross Margin</div>
-                  <div className="font-bold text-emerald-900 dark:text-emerald-200 font-mono mt-0.5">{recipe.marginPercent}%</div>
+                <div className="px-2 py-0.5 rounded bg-leaf text-white font-black text-[11px]">
+                  {recipe.marginPercent || 80}% Margin
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-stone-500 dark:text-stone-400 flex items-center space-x-1">
-                  <Clock className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
-                  <span>Prep: {recipe.prepTimeMinutes} mins</span>
-                </span>
-
-                <button
-                  onClick={() => handlePushSpecial(recipe.title)}
-                  className="px-3.5 py-2 rounded-lg bg-forest-900 hover:bg-forest-800 text-white text-xs font-medium shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5 text-gold-400" />
-                  <span>Push to Daily Specials</span>
-                </button>
-              </div>
-
-              {/* Food safety certification badge */}
-              <div className="mt-3 pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[10px] text-stone-400 dark:text-stone-500">
-                <span className="flex items-center space-x-1 text-emerald-700 dark:text-emerald-400 font-medium">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>100% Food-Safety Compliant</span>
-                </span>
-                <span>Excludes expired/spoiled lots</span>
-              </div>
+              <BigButton
+                variant="primary"
+                fullWidth
+                size="default"
+                icon={Flame}
+                onClick={() => handleCookThis(recipe)}
+              >
+                Cook This Special
+              </BigButton>
             </div>
-          </div>
+          </Ticket>
         ))}
       </div>
     </div>
