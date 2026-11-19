@@ -127,9 +127,13 @@ def record_waste_entry(
     else:
         raise ValueError(f"Invalid item_type '{item_type}'. Must be 'ingredient' or 'prepared_item'.")
 
-    # Generate log number
-    count = WasteRecord.query.count()
-    log_num = f"WST-{count + 1:03d}"
+    # Generate log number ensuring strict uniqueness
+    max_id = db.session.query(db.func.max(WasteRecord.id)).scalar() or 0
+    candidate_log = f"WST-{max_id + 1:03d}"
+    while WasteRecord.query.filter_by(log_number=candidate_log).first():
+        max_id += 1
+        candidate_log = f"WST-{max_id + 1:03d}"
+    log_num = candidate_log
 
     # Create waste record
     waste_rec = WasteRecord(

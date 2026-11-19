@@ -5,7 +5,7 @@ Purchase & Inventory Optimization Service:
 3. Usable stock calculation excluding expired batches
 4. Purchase Order generation & FEFO stock receiving
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 import numpy as np
 from app.extensions import db
@@ -25,6 +25,7 @@ def calculate_ingredient_requirements(
     Explodes forecasted menu demand into total raw ingredient requirements across all dishes.
     Handles multiple dishes sharing the same ingredient with unit conversions and shrinkage loss.
     """
+    days_ahead = max(1, min(60, int(days_ahead)))
     if start_date is None:
         start_date = date.today() + timedelta(days=1)
     end_date = start_date + timedelta(days=days_ahead)
@@ -69,8 +70,11 @@ def calculate_ingredient_requirements(
             if not ing:
                 continue
 
-            # Convert recipe portion quantity to ingredient's standard base unit
-            base_portion_qty = convert_quantity(rec.quantity, rec.unit, ing.unit)
+            # Convert recipe portion quantity to ingredient's standard base unit safely
+            try:
+                base_portion_qty = convert_quantity(rec.quantity, rec.unit, ing.unit)
+            except ValueError:
+                base_portion_qty = rec.quantity
 
             # Account for preparation shrinkage / trimming loss
             loss_factor = 1.0 + ((rec.prep_loss_percentage or 0.0) / 100.0)
@@ -122,6 +126,7 @@ def generate_purchase_recommendations(
     - Uses safety stock = reorder_point (configurable par buffer).
     - Estimates purchase costs and groups by preferred supplier.
     """
+    days_ahead = max(1, min(60, int(days_ahead)))
     today = date.today()
     if start_date is None:
         start_date = today + timedelta(days=1)
@@ -150,6 +155,8 @@ def generate_purchase_recommendations(
         near_expiry_batches = 0
 
         for b in active_batches:
+            if not b.expiry_date:
+                continue
             if b.expiry_date < today:
                 expired_stock += b.remaining_quantity
             else:
@@ -168,7 +175,7 @@ def generate_purchase_recommendations(
         contributing = req_info.get("contributingDishes", [])
 
         # 3. Safety Stock / Reorder Point
-        safety_stock = round(ing.reorder_point, 2)
+        safety_stock = round(max(0.0, ing.reorder_point or 0.0), 2)
 
         # 4. Purchase Recommendation Formula:
         # Purchase Quantity = Maximum of zero and (Required Quantity + Safety Stock - Usable Stock)
@@ -194,6 +201,8 @@ def generate_purchase_recommendations(
             items_needing_reorder += 1
             total_estimated_po_cost += est_cost
 
+        days_to_exp = (nearest_expiry - today).days if nearest_expiry else 999
+
         item_rec = {
             "ingredientId": ing.id,
             "sku": ing.sku,
@@ -212,7 +221,7 @@ def generate_purchase_recommendations(
             "estimatedCost": est_cost,
             "status": stock_status,
             "nearestExpiryDate": nearest_expiry.isoformat() if nearest_expiry else None,
-            "daysToExpiry": (nearest_expiry - today).days if nearest_expiry else 999,
+            "daysToExpiry": days_to_exp,
             "hasNearExpiry": near_expiry_batches > 0,
             "preferredSupplier": ing.preferred_supplier or "Local Wholesaler",
             "activeBatchCount": len(active_batches),
@@ -267,23 +276,26 @@ def record_stock_consumption(
     if not ingredient:
         raise ValueError("Ingredient not found.")
     if quantity <= 0:
-        raise ValueError("Consumption quantity must be positive.")
+        raise ValueError("Consumption quantity must be strictly greater than zero.")
+
+    ref_id = reference_id or f"CONS-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
 
     movements = consume_ingredient_fefo(
         ingredient=ingredient,
         required_qty=quantity,
         required_unit=ingredient.unit,
-        reference_id=reference_id or f"MANUAL-{date.today().strftime('%m%d')}",
-        reference_type=reason,
+        reference_id=ref_id,
+        reference_type="manual_consumption",
         user_id=user_id,
         notes=f"Stock consumption for {reason}"
     )
+
     db.session.commit()
 
     return {
         "success": True,
-        "message": f"Successfully consumed {quantity} {ingredient.unit} of '{ingredient.name}' via FEFO.",
-        "newCurrentStock": ingredient.current_stock,
-        "movementsCreated": len(movements)
+        "message": f"Consumed {quantity} {ingredient.unit} of '{ingredient.name}' via FEFO.",
+        "currentStock": round(ingredient.current_stock, 4),
+        "usableStock": ingredient.usable_stock,
+        "movementsRecorded": len(movements)
     }
-

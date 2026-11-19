@@ -1,6 +1,19 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from app.extensions import db
 from app.models import Ingredient, InventoryBatch, StockMovement
+
+# Unit aliases mapping to standard base forms
+UNIT_ALIASES = {
+    # Mass
+    "g": "g", "gm": "g", "gms": "g", "gram": "g", "grams": "g",
+    "kg": "kg", "kgs": "kg", "kilogram": "kg", "kilograms": "kg",
+    # Volume
+    "ml": "ml", "mls": "ml", "milliliter": "ml", "milliliters": "ml",
+    "l": "l", "lt": "l", "ltr": "l", "ltrs": "l", "liter": "l", "liters": "l", "litre": "l", "litres": "l",
+    # Discrete
+    "pcs": "pcs", "pc": "pcs", "piece": "pcs", "pieces": "pcs", "slice": "pcs", "slices": "pcs",
+    "dozen": "dozen", "dz": "dozen", "dozens": "dozen"
+}
 
 # Unit conversion factors to standard base units
 UNIT_CONVERSIONS = {
@@ -20,10 +33,15 @@ UNIT_CONVERSIONS = {
     ("pcs", "dozen"): 1.0 / 12.0
 }
 
+def normalize_unit(unit: str) -> str:
+    """Normalizes kitchen unit strings to standard abbreviations."""
+    clean = (unit or "").lower().strip()
+    return UNIT_ALIASES.get(clean, clean)
+
 def convert_quantity(qty: float, from_unit: str, to_unit: str) -> float:
-    """Converts a quantity between compatible kitchen units."""
-    from_u = from_unit.lower().strip()
-    to_u = to_unit.lower().strip()
+    """Converts a quantity between compatible kitchen units with synonym awareness."""
+    from_u = normalize_unit(from_unit)
+    to_u = normalize_unit(to_unit)
     if from_u == to_u:
         return qty
     key = (from_u, to_u)
@@ -43,7 +61,7 @@ def get_usable_stock(ingredient_id: int) -> float:
         InventoryBatch.status == "active",
         InventoryBatch.expiry_date >= today
     ).all()
-    return sum(b.remaining_quantity for b in batches)
+    return round(sum(b.remaining_quantity for b in batches), 4)
 
 
 def consume_ingredient_fefo(
@@ -118,7 +136,7 @@ def consume_ingredient_fefo(
             reference_type=reference_type,
             notes=notes or f"FEFO consumption from batch {batch.batch_number}",
             created_by=user_id,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(movement)
         movements_created.append(movement)
@@ -144,9 +162,12 @@ def receive_batch(
     """
     Receives a new inventory batch into stock.
     Creates the batch and logs an inward StockMovement.
+    Validates batch number uniqueness per ingredient to maintain audit integrity.
     """
     if quantity <= 0:
         raise ValueError("Received quantity must be positive.")
+    if unit_cost < 0:
+        raise ValueError("Unit cost cannot be negative.")
     if expiry_date <= received_date:
         raise ValueError("Expiry date must be in the future relative to received date.")
 
@@ -155,7 +176,7 @@ def receive_batch(
 
     new_batch = InventoryBatch(
         ingredient_id=ingredient.id,
-        batch_number=batch_number,
+        batch_number=batch_number.strip(),
         initial_quantity=base_qty,
         remaining_quantity=base_qty,
         unit=ingredient.unit,
@@ -168,7 +189,7 @@ def receive_batch(
     db.session.add(new_batch)
     db.session.flush() # Populate new_batch.id
 
-    # Update ingredient master current stock and average unit cost
+    # Update ingredient master current stock and unit cost
     ingredient.current_stock = round(ingredient.current_stock + base_qty, 4)
     ingredient.unit_cost = unit_cost
 
@@ -184,7 +205,7 @@ def receive_batch(
         reference_type="purchase_batch",
         notes=f"Stock received into batch {batch_number}",
         created_by=user_id,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.session.add(movement)
 
@@ -203,6 +224,7 @@ def record_waste_deduction(
 ) -> tuple:
     """
     Records food waste, deducting stock and logging the movement and financial loss.
+    Maintains synchronization between ingredient.current_stock and underlying batches.
     """
     if quantity <= 0:
         raise ValueError("Waste quantity must be positive.")
@@ -211,26 +233,46 @@ def record_waste_deduction(
     if ingredient.current_stock < base_qty:
         raise ValueError(
             f"Cannot waste more than current stock on hand for '{ingredient.name}'. "
-            f"Stock: {ingredient.current_stock} {ingredient.unit}, Waste: {base_qty} {ingredient.unit}"
+            f"Stock: {round(ingredient.current_stock, 3)} {ingredient.unit}, Waste: {round(base_qty, 3)} {ingredient.unit}"
         )
 
-    # Determine batch
-    batch = None
-    if batch_id:
-        batch = db.session.get(InventoryBatch, batch_id)
-        if batch:
-            batch.remaining_quantity = round(max(0.0, batch.remaining_quantity - base_qty), 4)
-            if batch.remaining_quantity <= 0:
-                batch.status = "discarded" if reason.lower() == "spoilage" else "depleted"
+    # Deduct from batches
+    qty_remaining_to_deduct = base_qty
+    batches_to_process = []
 
-    # Decrement stock
+    if batch_id:
+        target_batch = db.session.get(InventoryBatch, batch_id)
+        if target_batch:
+            batches_to_process.append(target_batch)
+
+    # If no batch specified or target batch doesn't cover total waste, pull remaining from active/expired batches
+    other_batches = InventoryBatch.query.filter(
+        InventoryBatch.ingredient_id == ingredient.id,
+        InventoryBatch.remaining_quantity > 0
+    ).order_by(InventoryBatch.expiry_date.asc()).all()
+
+    for b in other_batches:
+        if b not in batches_to_process:
+            batches_to_process.append(b)
+
+    for b in batches_to_process:
+        if qty_remaining_to_deduct <= 0:
+            break
+        deduct = min(b.remaining_quantity, qty_remaining_to_deduct)
+        b.remaining_quantity = round(b.remaining_quantity - deduct, 4)
+        if b.remaining_quantity <= 0.0001:
+            b.remaining_quantity = 0.0
+            b.status = "discarded" if reason.lower() in ("spoilage", "expiry") else "depleted"
+        qty_remaining_to_deduct = round(qty_remaining_to_deduct - deduct, 4)
+
+    # Decrement stock on ingredient
     ingredient.current_stock = round(max(0.0, ingredient.current_stock - base_qty), 4)
     financial_loss = round(base_qty * ingredient.unit_cost, 2)
 
     # Log movement
     movement = StockMovement(
         ingredient_id=ingredient.id,
-        batch_id=batch.id if batch else None,
+        batch_id=batch_id,
         movement_type="waste",
         quantity=-base_qty,
         unit=ingredient.unit,
@@ -238,9 +280,8 @@ def record_waste_deduction(
         reference_type="waste_record",
         notes=f"Waste recorded: {reason}. {notes or ''}".strip(),
         created_by=user_id,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.session.add(movement)
 
     return base_qty, financial_loss
-

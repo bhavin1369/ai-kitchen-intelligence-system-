@@ -71,7 +71,12 @@ def jwt_required(f):
         if not payload:
             return jsonify({"success": False, "message": "Invalid or expired authorization token"}), 401
 
-        user = db.session.get(User, int(payload["sub"]))
+        try:
+            user_id = int(payload.get("sub", 0))
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Malformed token subject claim"}), 401
+
+        user = db.session.get(User, user_id)
         if not user or not user.is_active:
             return jsonify({"success": False, "message": "User not found or account deactivated"}), 401
 

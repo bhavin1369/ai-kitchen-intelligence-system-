@@ -6,8 +6,13 @@ from app.models import Sale, SaleItem, MenuItem, Ingredient, Recipe
 from app.services.inventory_service import consume_ingredient_fefo
 
 def generate_order_number() -> str:
-    count = Sale.query.count()
-    return f"ORD-{1040 + count + 1}"
+    """Generates a strictly unique order number based on max record ID."""
+    max_id = db.session.query(db.func.max(Sale.id)).scalar() or 0
+    candidate = f"ORD-{1040 + max_id + 1}"
+    while Sale.query.filter_by(order_number=candidate).first():
+        max_id += 1
+        candidate = f"ORD-{1040 + max_id + 1}"
+    return candidate
 
 def process_new_sale(data: dict, user_id: int = None, deduct_inventory: bool = True) -> Sale:
     """
