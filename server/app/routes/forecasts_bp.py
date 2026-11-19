@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, Response
 from app.extensions import db
 from app.models import Forecast, MenuItem
 from app.utils.auth import roles_required
+from app.utils.validators import safe_int, safe_date
 from app.services.forecast_service import (
     generate_forecasts,
     get_model_evaluation,
@@ -24,23 +25,10 @@ def get_or_generate_forecasts():
     - menuItemId: Optional dish ID filter ('all' for all dishes)
     """
     menu_item_id_str = request.args.get("menuItemId") or request.args.get("menu_item_id")
-    menu_item_id = None
-    if menu_item_id_str and str(menu_item_id_str).lower() != "all":
-        try:
-            menu_item_id = int(menu_item_id_str)
-        except ValueError:
-            pass
-
-    days_ahead = int(request.args.get("days", 7))
-    days_ahead = max(1, min(60, days_ahead))
-
+    menu_item_id = safe_int(menu_item_id_str) if menu_item_id_str and str(menu_item_id_str).lower() != "all" else None
+    days_ahead = safe_int(request.args.get("days"), default=7, min_val=1, max_val=60)
     start_date_str = request.args.get("startDate") or request.args.get("start_date")
-    start_d = None
-    if start_date_str:
-        try:
-            start_d = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-        except ValueError:
-            pass
+    start_d = safe_date(start_date_str)
 
     result = generate_forecasts(
         start_date=start_d,

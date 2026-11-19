@@ -27,9 +27,26 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         except Exception:
             pass
 
-def create_app(config_class=Config):
+def create_app(config_class=None):
+    if config_class is None:
+        import os
+        from app.config import Config, TestingConfig
+        if os.environ.get("FLASK_ENV") == "testing" or os.environ.get("TESTING") == "1":
+            config_class = TestingConfig
+        else:
+            config_class = Config
+
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Initialize isolated test database if in testing mode
+    if app.config.get("TESTING") and str(app.config.get("SQLALCHEMY_DATABASE_URI", "")).endswith("test_kitchen_intelligence.db"):
+        import shutil
+        from pathlib import Path
+        test_db = Path(app.config.get("DATABASE_PATH"))
+        prod_db = Path(__file__).resolve().parent.parent / "instance" / "kitchen_intelligence.db"
+        if not test_db.exists() and prod_db.exists():
+            shutil.copy2(prod_db, test_db)
 
     # Initialize extensions
     db.init_app(app)
@@ -110,6 +127,10 @@ def create_app(config_class=Config):
     @app.errorhandler(404)
     def not_found(e):
         return jsonify({"success": False, "message": "Resource not found"}), 404
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        return jsonify({"success": False, "message": "Method not allowed for requested URL"}), 405
 
     @app.errorhandler(500)
     def server_error(e):
